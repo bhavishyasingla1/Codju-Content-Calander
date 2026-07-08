@@ -46,6 +46,9 @@ export default function AiModal({ year, month, onGenerate, onClose }) {
           {loading ? (
             <div className="ai-modal__loading">
               <img src={loaderGif} className="ai-modal__loader-gif" alt="Panda loading..." />
+              <div className="ai-modal__loading-line-container">
+                <div className="ai-modal__loading-line" />
+              </div>
               <p className="ai-modal__loading-text">Panda is writing the captions and scheduling your rows...</p>
             </div>
           ) : (

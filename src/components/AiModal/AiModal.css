@@ -121,9 +121,41 @@
 }
 
 .ai-modal__loader-gif {
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   object-fit: contain;
+}
+
+.ai-modal__loading-line-container {
+  width: 240px;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+  margin: 4px 0;
+}
+
+.ai-modal__loading-line {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), #B983FF);
+  position: absolute;
+  top: 0;
+  left: -100%;
+  animation: loading-bar-animation 1.5s infinite linear;
+}
+
+@keyframes loading-bar-animation {
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 0;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 .ai-modal__loading-text {
