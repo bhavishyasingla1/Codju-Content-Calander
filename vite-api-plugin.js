@@ -198,6 +198,63 @@ Ensure all dates fall exactly within the month ${year}-${String(month).padStart(
           return;
         }
 
+        // Route: GET /api/notes
+        if (pathname === '/api/notes' && req.method === 'GET') {
+          const monthQuery = parsedUrl.query.month; // e.g. 2026-07
+          res.setHeader('Content-Type', 'application/json');
+
+          if (!monthQuery) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Missing month parameter' }));
+            return;
+          }
+
+          try {
+            const queryText = 'SELECT * FROM month_notes WHERE month_key = $1';
+            const result = await pool.query(queryText, [monthQuery]);
+            if (result.rows.length === 0) {
+              res.end(JSON.stringify({ month_key: monthQuery, notes: '' }));
+            } else {
+              res.end(JSON.stringify(result.rows[0]));
+            }
+          } catch (err) {
+            console.error('Error fetching month notes:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // Route: POST /api/notes
+        if (pathname === '/api/notes' && req.method === 'POST') {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const body = await parseBody(req);
+            const { month, notes } = body;
+
+            if (!month) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Missing month parameter' }));
+              return;
+            }
+
+            const queryText = `
+              INSERT INTO month_notes (month_key, notes, updated_at)
+              VALUES ($1, $2, CURRENT_TIMESTAMP)
+              ON CONFLICT (month_key) DO UPDATE
+              SET notes = EXCLUDED.notes, updated_at = CURRENT_TIMESTAMP
+              RETURNING *
+            `;
+            const result = await pool.query(queryText, [month, notes || '']);
+            res.end(JSON.stringify(result.rows[0]));
+          } catch (err) {
+            console.error('Error saving month notes:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
         // Route: GET /api/content
         if (pathname === '/api/content' && req.method === 'GET') {
           const monthQuery = parsedUrl.query.month; // e.g. 2026-07

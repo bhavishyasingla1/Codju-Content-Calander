@@ -11,6 +11,7 @@ import PreviewModal from './components/PreviewModal/PreviewModal';
 import Footer from './components/Footer/Footer';
 import ContentEditor from './components/ContentEditor/ContentEditor';
 import AiModal from './components/AiModal/AiModal';
+import MonthNotes from './components/MonthNotes/MonthNotes';
 import { getMonthName } from './utils/helpers';
 import './App.css';
 
@@ -285,6 +286,7 @@ export default function App() {
             )}
           </>
         )}
+        <MonthNotes year={year} month={month} />
       </main>
 
       {/* Footer */}

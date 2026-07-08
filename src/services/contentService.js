@@ -208,4 +208,44 @@ export async function resetData() {
   // Client can just re-initialize if needed, or we could hit a reset endpoint.
   return true;
 }
+
+/**
+ * Fetch month notes
+ * @param {number} year
+ * @param {number} month
+ * @returns {Promise<object>}
+ */
+export async function fetchNotesByMonth(year, month) {
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+  const response = await fetch(`/api/notes?month=${monthKey}`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to fetch notes');
+  }
+  return response.json();
+}
+
+/**
+ * Save month notes
+ * @param {number} year
+ * @param {number} month
+ * @param {string} notes
+ * @returns {Promise<object>}
+ */
+export async function saveNotesByMonth(year, month, notes) {
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+  const response = await fetch('/api/notes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ month: monthKey, notes }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to save notes');
+  }
+  return response.json();
+}
+
 export { PLATFORMS, CONTENT_TYPES, STATUSES };

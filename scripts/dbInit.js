@@ -40,6 +40,18 @@ async function initDb() {
   await client.query(createTableQuery);
   console.log('Content table created or already exists.');
 
+  const createNotesTableQuery = `
+    CREATE TABLE IF NOT EXISTS month_notes (
+      month_key TEXT PRIMARY KEY,
+      notes TEXT,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  console.log('Creating month_notes table if not exists...');
+  await client.query(createNotesTableQuery);
+  console.log('Month_notes table created or already exists.');
+
   // Let's check if the table is empty
   const countRes = await client.query('SELECT COUNT(*) FROM content');
   const count = parseInt(countRes.rows[0].count, 10);
