@@ -1,0 +1,171 @@
+.loading-skeleton {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.skeleton-block {
+  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* List Skeleton */
+.skeleton-list {
+  background: var(--color-bg-elevated);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.skeleton-list__header {
+  display: grid;
+  grid-template-columns: 80px 1.5fr 100px 2fr 100px 60px 60px 80px;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--color-bg);
+  border-bottom: 1.5px solid var(--color-border);
+}
+
+.skeleton-block--header {
+  height: 16px;
+}
+
+.skeleton-list__row {
+  display: grid;
+  grid-template-columns: 80px 1.5fr 100px 2fr 100px 60px 60px 80px;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-block--cell {
+  height: 20px;
+}
+
+.skeleton-block--double {
+  width: 70%;
+}
+
+.skeleton-block--triple {
+  width: 85%;
+}
+
+/* Grid Skeleton */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.skeleton-card {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  overflow: hidden;
+}
+
+.skeleton-card__thumb {
+  height: 160px;
+  border-radius: 0;
+}
+
+.skeleton-card__body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-card__date {
+  height: 12px;
+  width: 40%;
+}
+
+.skeleton-card__title {
+  height: 18px;
+  width: 80%;
+}
+
+.skeleton-card__text {
+  height: 36px;
+  width: 100%;
+}
+
+.skeleton-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.skeleton-card__badge {
+  height: 18px;
+  width: 70px;
+  border-radius: var(--radius-full);
+}
+
+.skeleton-card__btn {
+  height: 28px;
+  width: 60px;
+}
+
+/* Calendar Skeleton */
+.skeleton-calendar {
+  background: var(--color-bg-elevated);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.skeleton-calendar__header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.skeleton-calendar__day-name {
+  height: 16px;
+  margin: 12px auto;
+  width: 50%;
+}
+
+.skeleton-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(5, 100px);
+}
+
+.skeleton-calendar__cell {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-calendar__cell:nth-child(7n) {
+  border-right: none;
+}
+
+.skeleton-calendar__number {
+  height: 14px;
+  width: 20px;
+}
+
+.skeleton-calendar__item {
+  height: 24px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}

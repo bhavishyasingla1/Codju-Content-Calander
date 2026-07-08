@@ -1,0 +1,75 @@
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: none;
+  min-width: 90px;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.save-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.save-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Saving state */
+.save-btn--saving {
+  background: var(--color-primary-light);
+}
+
+/* Saved state */
+.save-btn--saved {
+  background: var(--color-accent-green-dark);
+}
+
+/* Error state */
+.save-btn--error {
+  background: #EF4444;
+}
+
+/* Spinner */
+.save-btn__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Checkmark animation */
+.save-btn__check {
+  animation: checkmark 0.3s ease forwards;
+}
+
+/* Sizes */
+.save-btn--small {
+  padding: 5px 14px;
+  font-size: var(--text-xs);
+  min-width: 72px;
+}
+
+.save-btn--large {
+  padding: 12px 32px;
+  font-size: var(--text-md);
+  border-radius: var(--radius-lg);
+  min-width: 120px;
+}

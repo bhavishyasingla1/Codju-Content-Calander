@@ -1,0 +1,84 @@
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.month-selector__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.month-selector__arrow:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-ghost);
+}
+
+.month-selector__arrow:active {
+  transform: scale(0.95);
+}
+
+.month-selector__display {
+  text-align: center;
+  min-width: 160px;
+}
+
+.month-selector__heading {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.month-selector__create {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-pale);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.month-selector__create:hover {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+
+.month-selector__create:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 640px) {
+  .month-selector__heading {
+    font-size: var(--text-lg);
+  }
+  
+  .month-selector__display {
+    min-width: auto;
+  }
+  
+  .month-selector__create span {
+    display: none;
+  }
+}

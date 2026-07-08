@@ -1,0 +1,238 @@
+.content-row {
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.content-row:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.content-row--expanded {
+  background-color: var(--color-primary-ghost) !important;
+}
+
+.content-row__cell {
+  padding: 8px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.content-row__cell--center {
+  text-align: center;
+}
+
+.content-row__cell--drag {
+  width: 32px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.content-row__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  cursor: grab;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.content-row__drag-handle:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-border);
+}
+
+.content-row__drag-handle:active {
+  cursor: grabbing;
+}
+
+.content-row__cell--date {
+  width: 140px;
+}
+
+.content-row__cell--name {
+  min-width: 180px;
+}
+
+.content-row__cell--type {
+  width: 120px;
+}
+
+.content-row__cell--summary {
+  width: 30%;
+  min-width: 200px;
+}
+
+.content-row__cell--status {
+  width: 110px;
+}
+
+.content-row__cell--save {
+  width: 90px;
+}
+
+/* Inline Edit Controls */
+.content-row__input {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+
+.content-row__input:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-elevated);
+}
+
+.content-row__input:focus {
+  border-color: var(--color-primary);
+  background: var(--color-bg-elevated);
+  box-shadow: 0 0 0 2px var(--color-primary-pale);
+}
+
+.content-row__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.content-row__input--name {
+  font-weight: 500;
+}
+
+.content-row__select {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 6px 24px 6px 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.content-row__select:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-elevated);
+}
+
+.content-row__select:focus {
+  border-color: var(--color-primary);
+  background: var(--color-bg-elevated);
+  box-shadow: 0 0 0 2px var(--color-primary-pale);
+}
+
+/* Buttons */
+.content-row__btn-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.content-row__btn-expand:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.content-row__btn-expand--active {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+  background: var(--color-primary-pale);
+}
+
+.content-row__btn-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.content-row__btn-upload:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.content-row__btn-upload--has-files {
+  color: var(--color-primary);
+  background: var(--color-primary-pale);
+}
+
+.content-row__btn-upload--has-files:hover {
+  background: var(--color-primary-light);
+  color: var(--color-text-inverse);
+}
+
+.content-row__file-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-accent-green-dark);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 700;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content-row__btn-view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.content-row__btn-view:hover:not(:disabled) {
+  background: var(--color-primary-pale);
+  color: var(--color-primary);
+}
+
+.content-row__btn-view:disabled {
+  color: var(--color-text-muted);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Editor Wrapper Row */
+.content-row__editor-row {
+  background-color: var(--color-primary-ghost);
+}
+
+.content-row__editor-cell {
+  padding: 4px 16px 16px 48px;
+  border-bottom: 1.5px solid var(--color-border);
+}
+
+.content-row__editor-wrapper {
+  animation: slideInDown 0.2s ease forwards;
+}
