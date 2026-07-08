@@ -54,7 +54,18 @@ Ensure all dates fall exactly within the month ${year}-${String(month).padStart(
 
     if (!geminiResponse.ok) {
       const errText = await geminiResponse.text();
-      throw new Error(`Gemini API error: ${errText}`);
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.error && (parsed.error.status === 'RESOURCE_EXHAUSTED' || parsed.error.code === 429)) {
+          throw new Error('Gemini API Quota Exceeded: The shared free-tier key has reached its limit (20 requests/day). Please try again shortly or configure a custom GEMINI_API_KEY environment variable.');
+        }
+        throw new Error(parsed.error.message || errText);
+      } catch (e) {
+        if (e.message.startsWith('Gemini API Quota Exceeded')) {
+          throw e;
+        }
+        throw new Error(`Gemini API error: ${errText}`);
+      }
     }
 
     const geminiData = await geminiResponse.json();
