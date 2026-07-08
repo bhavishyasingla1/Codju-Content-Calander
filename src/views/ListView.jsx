@@ -56,7 +56,6 @@ export default function ListView({
               <th className="list-view__th list-view__th--center">Upload</th>
               <th className="list-view__th list-view__th--center">View</th>
               <th className="list-view__th">Status</th>
-              <th className="list-view__th list-view__th--save">Save</th>
             </tr>
           </thead>
           <tbody>

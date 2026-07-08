@@ -9,6 +9,7 @@ export default function TopNav({
   onPrevMonth,
   onNextMonth,
   onCreateMonth,
+  onChangeDate,
   currentView,
   onViewChange,
   searchQuery,
@@ -30,6 +31,7 @@ export default function TopNav({
           onPrev={onPrevMonth}
           onNext={onNextMonth}
           onCreateMonth={onCreateMonth}
+          onChangeDate={onChangeDate}
         />
 
         {/* Right side: View Toggle + Search */}

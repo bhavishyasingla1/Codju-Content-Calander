@@ -28,18 +28,40 @@
   transform: scale(0.95);
 }
 
-.month-selector__display {
-  text-align: center;
-  min-width: 160px;
+.month-selector__dropdowns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-elevated);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 2px 8px;
+  transition: border-color var(--transition-fast);
 }
 
-.month-selector__heading {
+.month-selector__dropdowns:hover {
+  border-color: var(--color-border-hover);
+}
+
+.month-selector__select {
   font-family: var(--font-heading);
-  font-size: var(--text-xl);
+  font-size: var(--text-md);
   font-weight: 700;
   color: var(--color-text);
-  margin: 0;
-  white-space: nowrap;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  padding: 6px 4px;
+}
+
+.month-selector__select--month {
+  min-width: 110px;
+}
+
+.month-selector__select--year {
+  min-width: 70px;
+  color: var(--color-text-secondary);
 }
 
 .month-selector__create {
@@ -70,12 +92,16 @@
 }
 
 @media (max-width: 640px) {
-  .month-selector__heading {
-    font-size: var(--text-lg);
+  .month-selector__select {
+    font-size: var(--text-sm);
   }
   
-  .month-selector__display {
-    min-width: auto;
+  .month-selector__select--month {
+    min-width: 90px;
+  }
+  
+  .month-selector__select--year {
+    min-width: 60px;
   }
   
   .month-selector__create span {

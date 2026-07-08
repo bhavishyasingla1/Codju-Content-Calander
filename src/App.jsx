@@ -71,9 +71,40 @@ export default function App() {
     setEditingItem(null);
   };
 
+  const handleDateChange = (newYear, newMonth) => {
+    setYear(newYear);
+    setMonth(newMonth);
+    setEditingItem(null);
+  };
+
   // Content CRUD Triggers
   const handleCreateNew = async () => {
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    // Find all content for the current year/month
+    const currentMonthItems = content.filter(item => {
+      return item.date.startsWith(`${year}-${String(month).padStart(2, '0')}`);
+    });
+    
+    let dateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    if (currentMonthItems.length > 0) {
+      const dates = currentMonthItems
+        .map(item => new Date(item.date).getTime())
+        .filter(t => !isNaN(t));
+      if (dates.length > 0) {
+        const maxTime = Math.max(...dates);
+        const maxDate = new Date(maxTime);
+        // Increment by 1 day
+        maxDate.setDate(maxDate.getDate() + 1);
+        
+        // Ensure it's still within the same month
+        if (maxDate.getFullYear() === year && (maxDate.getMonth() + 1) === month) {
+          dateStr = maxDate.toISOString().split('T')[0];
+        } else {
+          const lastDay = new Date(year, month, 0).getDate();
+          dateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        }
+      }
+    }
+
     try {
       const newItem = await addContent({
         date: dateStr,
@@ -145,6 +176,7 @@ export default function App() {
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
         onCreateMonth={handleCreateMonth}
+        onChangeDate={handleDateChange}
         currentView={view}
         onViewChange={setView}
         searchQuery={searchQuery}

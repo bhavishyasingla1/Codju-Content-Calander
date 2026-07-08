@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { PLATFORMS, CONTENT_TYPES } from '../../data/mockContent';
+import { CONTENT_TYPES } from '../../data/mockContent';
 import UploadZone from '../UploadZone/UploadZone';
 import RichTextEditor from '../RichTextEditor/RichTextEditor';
 import StatusBadge from '../StatusBadge/StatusBadge';
@@ -41,25 +41,11 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
     triggerSave();
   };
 
-  const handleThumbnailUpload = async (file) => {
-    const asset = await uploadAsset(file);
-    setFormData(prev => ({
-      ...prev,
-      thumbnailAsset: asset,
-    }));
-    triggerSave();
-  };
-
   const handleRemoveAsset = (assetId) => {
     setFormData(prev => ({
       ...prev,
       assets: prev.assets.filter((a, idx) => (a.id || idx) !== assetId),
     }));
-    triggerSave();
-  };
-
-  const handleRemoveThumbnail = () => {
-    setFormData(prev => ({ ...prev, thumbnailAsset: null }));
     triggerSave();
   };
 
@@ -78,25 +64,13 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
                 rows={4}
               />
             </div>
-            <div className="editor__field">
-              <label className="editor__label">Platform</label>
-              <select
-                className="editor__select"
-                value={formData.platform || 'instagram'}
-                onChange={(e) => handleChange('platform', e.target.value)}
-              >
-                {PLATFORMS.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
             <UploadZone
-              label="Upload Image"
+              label="Upload Asset (Image, Video, or PDF)"
               assets={formData.assets || []}
               onUpload={handleUpload}
               onRemove={handleRemoveAsset}
               onPreview={onPreview}
-              accept="image/*"
+              accept="image/*,video/*,application/pdf"
             />
           </>
         );
@@ -114,21 +88,9 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
                 rows={4}
               />
             </div>
-            <div className="editor__field">
-              <label className="editor__label">Platform</label>
-              <select
-                className="editor__select"
-                value={formData.platform || 'instagram'}
-                onChange={(e) => handleChange('platform', e.target.value)}
-              >
-                {PLATFORMS.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
             <UploadZone
-              label="Upload Slides (Multiple Images)"
-              assets={formData.assets || []}
+              label="Upload Images (4-5 Slides)"
+              assets={(formData.assets || []).filter(a => a.type?.startsWith('image/'))}
               onUpload={handleUpload}
               onRemove={handleRemoveAsset}
               onPreview={onPreview}
@@ -166,43 +128,13 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
                 rows={4}
               />
             </div>
-            <div className="editor__field">
-              <label className="editor__label">Script</label>
-              <textarea
-                className="editor__textarea editor__textarea--tall"
-                value={formData.script || ''}
-                onChange={(e) => handleChange('script', e.target.value)}
-                placeholder="Write your reel script..."
-                rows={8}
-              />
-            </div>
-            <div className="editor__field">
-              <label className="editor__label">Platform</label>
-              <select
-                className="editor__select"
-                value={formData.platform || 'instagram'}
-                onChange={(e) => handleChange('platform', e.target.value)}
-              >
-                {PLATFORMS.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
             <UploadZone
-              label="Upload Video"
+              label="Upload Reel Video"
               assets={formData.assets || []}
               onUpload={handleUpload}
               onRemove={handleRemoveAsset}
               onPreview={onPreview}
               accept="video/*"
-            />
-            <UploadZone
-              label="Upload Thumbnail"
-              assets={formData.thumbnailAsset ? [formData.thumbnailAsset] : []}
-              onUpload={handleThumbnailUpload}
-              onRemove={handleRemoveThumbnail}
-              onPreview={onPreview}
-              accept="image/*"
             />
           </>
         );
@@ -211,19 +143,7 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
         return (
           <>
             <div className="editor__field">
-              <label className="editor__label">Platform</label>
-              <select
-                className="editor__select"
-                value={formData.platform || 'linkedin'}
-                onChange={(e) => handleChange('platform', e.target.value)}
-              >
-                {PLATFORMS.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="editor__field">
-              <label className="editor__label">Content</label>
+              <label className="editor__label">Content (LinkedIn/Text Post)</label>
               <RichTextEditor
                 value={formData.richText || ''}
                 onChange={(html) => handleChange('richText', html)}
@@ -298,17 +218,6 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
               ))}
             </select>
           </div>
-        </div>
-
-        <div className="editor__field">
-          <label className="editor__label">Summary</label>
-          <textarea
-            className="editor__textarea"
-            value={formData.summary || ''}
-            onChange={(e) => handleChange('summary', e.target.value)}
-            placeholder="Brief summary of this content..."
-            rows={2}
-          />
         </div>
 
         {/* Type-specific fields */}

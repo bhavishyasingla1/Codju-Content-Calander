@@ -31,9 +31,7 @@ export default function ContentCard({ item, onEdit, onStatusChange }) {
             <span className="content-card__placeholder-text">No Media</span>
           </div>
         )}
-        <div className="content-card__platform-badge">
-          {item.platform}
-        </div>
+
       </div>
 
       {/* Body */}

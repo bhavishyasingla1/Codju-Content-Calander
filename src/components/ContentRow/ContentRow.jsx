@@ -35,13 +35,13 @@ export default function ContentRow({
 
   const handleViewPreview = () => {
     if (item.type === 'text' && item.richText) {
-      onPreview({ richText: item.richText });
+      onPreview({ richText: item.richText, caption: item.caption });
     } else if (item.thumbnailAsset) {
-      onPreview(item.thumbnailAsset);
+      onPreview({ asset: item.thumbnailAsset, caption: item.caption });
     } else if (item.assets && item.assets.length > 0) {
-      onPreview(item.assets[0]);
+      onPreview({ asset: item.assets[0], caption: item.caption });
     } else if (item.pdfAsset) {
-      onPreview(item.pdfAsset);
+      onPreview({ asset: item.pdfAsset, caption: item.caption });
     }
   };
 
@@ -158,17 +158,12 @@ export default function ContentRow({
         <td className="content-row__cell content-row__cell--status">
           <StatusBadge status={item.status} onClick={handleStatusChange} size="small" />
         </td>
-
-        {/* Cell: Save */}
-        <td className="content-row__cell content-row__cell--save">
-          <SaveButton onSave={() => onUpdate(item.id, localItem)} saveStatus={saveStatus} size="small" />
-        </td>
       </tr>
 
       {/* Expandable Editor Row */}
       {isExpanded && (
         <tr className="content-row__editor-row">
-          <td colSpan={11} className="content-row__editor-cell">
+          <td colSpan={10} className="content-row__editor-cell">
             <div className="content-row__editor-wrapper">
               <ContentEditor
                 item={item}
