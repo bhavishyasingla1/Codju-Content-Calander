@@ -1,6 +1,19 @@
 import pg from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.nbehjvipntthyttxgutt:Codjucontentcalander%40123%24@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
+function getConnectionString() {
+  let connStr = process.env.DATABASE_URL || 'postgresql://postgres.nbehjvipntthyttxgutt:Codjucontentcalander%40123%24@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
+  
+  // Match direct Supabase database URLs (e.g. db.nbehjvipntthyttxgutt.supabase.co)
+  const match = connStr.match(/postgresql:\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co:5432\/(.+)/);
+  if (match) {
+    const [_, password, projectId, dbName] = match;
+    connStr = `postgresql://postgres.${projectId}:${password}@aws-0-ap-northeast-1.pooler.supabase.com:5432/${dbName}`;
+    console.log(`Auto-rewrote direct Supabase URL to IPv4 pooler for project: ${projectId}`);
+  }
+  return connStr;
+}
+
+const connectionString = getConnectionString();
 
 export const pool = new pg.Pool({
   connectionString,
