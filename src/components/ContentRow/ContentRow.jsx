@@ -170,6 +170,7 @@ export default function ContentRow({
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onPreview={onPreview}
+                onClose={onToggleExpand}
               />
             </div>
           </td>

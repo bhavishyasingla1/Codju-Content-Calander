@@ -8,7 +8,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { uploadAsset } from '../../services/contentService';
 import './ContentEditor.css';
 
-export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
+export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onClose }) {
   const [formData, setFormData] = useState({ ...item });
 
   const saveFunction = useCallback(async () => {
@@ -34,19 +34,19 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
 
   const handleUpload = async (file) => {
     const asset = await uploadAsset(file);
-    setFormData(prev => ({
-      ...prev,
-      assets: [...(prev.assets || []), asset],
-    }));
-    triggerSave();
+    setFormData(prev => {
+      const nextAssets = [...(prev.assets || []), asset];
+      onUpdate(item.id, { ...prev, assets: nextAssets });
+      return { ...prev, assets: nextAssets };
+    });
   };
 
   const handleRemoveAsset = (assetId) => {
-    setFormData(prev => ({
-      ...prev,
-      assets: prev.assets.filter((a, idx) => (a.id || idx) !== assetId),
-    }));
-    triggerSave();
+    setFormData(prev => {
+      const nextAssets = prev.assets.filter((a, idx) => (a.id || idx) !== assetId);
+      onUpdate(item.id, { ...prev, assets: nextAssets });
+      return { ...prev, assets: nextAssets };
+    });
   };
 
   const renderTypeFields = () => {
@@ -102,12 +102,16 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
               assets={formData.pdfAsset ? [formData.pdfAsset] : []}
               onUpload={async (file) => {
                 const asset = await uploadAsset(file);
-                setFormData(prev => ({ ...prev, pdfAsset: asset }));
-                triggerSave();
+                setFormData(prev => {
+                  onUpdate(item.id, { ...prev, pdfAsset: asset });
+                  return { ...prev, pdfAsset: asset };
+                });
               }}
               onRemove={() => {
-                setFormData(prev => ({ ...prev, pdfAsset: null }));
-                triggerSave();
+                setFormData(prev => {
+                  onUpdate(item.id, { ...prev, pdfAsset: null });
+                  return { ...prev, pdfAsset: null };
+                });
               }}
               onPreview={onPreview}
               accept=".pdf"
@@ -181,6 +185,14 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview }) {
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
           </button>
+          {onClose && (
+            <button className="editor__close-btn" onClick={onClose} title="Close / Collapse" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

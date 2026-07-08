@@ -84,6 +84,16 @@
   color: var(--color-text-inverse);
 }
 
+.rte__copy-btn--success {
+  background: var(--color-accent-green-pale);
+  color: var(--color-accent-green-dark);
+}
+
+.rte__copy-btn--success:hover {
+  background: var(--color-accent-green-dark);
+  color: var(--color-text-inverse);
+}
+
 /* Editor */
 .rte__editor {
   min-height: 150px;

@@ -111,24 +111,35 @@ export async function createMonth(year, month) {
   return true;
 }
 
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
- * Upload an asset (creates a blob URL for mock storage)
- * In production, this would upload to Supabase Storage.
+ * Upload an asset (converts to base64 Data URL for persistent storage)
  * @param {File} file
  * @returns {Promise<object>}
  */
 export async function uploadAsset(file) {
-  // Simulate delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  return {
-    id: 'a' + Math.random().toString(36).substr(2, 9),
-    name: file.name,
-    type: file.type,
-    size: file.size,
-    url: URL.createObjectURL(file),
-    uploadedAt: new Date().toISOString(),
-  };
+  try {
+    const dataUrl = await fileToDataURL(file);
+    return {
+      id: 'a' + Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      url: dataUrl,
+      uploadedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Failed to convert file to data URL', error);
+    throw error;
+  }
 }
 
 /**

@@ -159,11 +159,25 @@ export default function App() {
   };
 
   // Preview triggers
+  const [previewCaption, setPreviewCaption] = useState(null);
+
   const handleOpenPreview = (target) => {
-    if (target.richText) {
-      setPreviewText(target.richText);
+    if (!target) return;
+    
+    // Check if target is a structured object or a direct asset
+    if (target.asset !== undefined || target.richText !== undefined) {
+      setPreviewAsset(target.asset || null);
+      setPreviewText(target.richText || null);
+      setPreviewCaption(target.caption || null);
     } else {
-      setPreviewAsset(target);
+      if (target.url) {
+        setPreviewAsset(target);
+        setPreviewText(null);
+      } else if (target.richText) {
+        setPreviewText(target.richText);
+        setPreviewAsset(null);
+      }
+      setPreviewCaption(target.caption || null);
     }
   };
 
@@ -241,19 +255,12 @@ export default function App() {
       {editingItem && (
         <div className="app-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setEditingItem(null)}>
           <div className="app-modal animate-scale-in">
-            <div className="app-modal__close-wrapper">
-              <button className="app-modal__close-btn" onClick={() => setEditingItem(null)} type="button">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
             <ContentEditor
               item={editingItem}
               onUpdate={handleUpdateItem}
               onDelete={handleDeleteItem}
               onPreview={handleOpenPreview}
+              onClose={() => setEditingItem(null)}
             />
           </div>
         </div>
@@ -264,9 +271,11 @@ export default function App() {
         <PreviewModal
           asset={previewAsset}
           richText={previewText}
+          caption={previewCaption}
           onClose={() => {
             setPreviewAsset(null);
             setPreviewText(null);
+            setPreviewCaption(null);
           }}
         />
       )}

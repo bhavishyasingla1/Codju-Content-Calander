@@ -1,8 +1,9 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { getCharCount, stripHtml, copyToClipboard } from '../../utils/helpers';
 import './RichTextEditor.css';
 
 export default function RichTextEditor({ value = '', onChange, placeholder = 'Start writing...', showCopyButton = false, showCharCount = false }) {
+  const [copied, setCopied] = useState(false);
   const editorRef = useRef(null);
   const isInternalChange = useRef(false);
 
@@ -39,6 +40,8 @@ export default function RichTextEditor({ value = '', onChange, placeholder = 'St
   const handleCopy = useCallback(async () => {
     const text = stripHtml(value);
     await copyToClipboard(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [value]);
 
   const charCount = getCharCount(value);
@@ -155,12 +158,28 @@ export default function RichTextEditor({ value = '', onChange, placeholder = 'St
         {showCopyButton && (
           <>
             <div className="rte__spacer" />
-            <button className="rte__copy-btn" onClick={handleCopy} type="button" title="Copy text">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-              Copy
+            <button
+              className={`rte__copy-btn ${copied ? 'rte__copy-btn--success' : ''}`}
+              onClick={handleCopy}
+              type="button"
+              title="Copy text"
+            >
+              {copied ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  Copy
+                </>
+              )}
             </button>
           </>
         )}
