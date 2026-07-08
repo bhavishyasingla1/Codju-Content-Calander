@@ -62,9 +62,6 @@ export default function ListView({
   };
 
   const handleBulkDelete = async () => {
-    const confirmed = confirm(`Are you sure you want to delete the ${selectedIds.length} selected items?`);
-    if (!confirmed) return;
-
     try {
       for (const id of selectedIds) {
         await onDelete(id, true); // Silent delete to bypass multiple confirm alerts
