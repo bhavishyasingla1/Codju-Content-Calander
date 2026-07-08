@@ -157,6 +157,50 @@ export function downloadAsset(url, filename) {
 }
 
 /**
+ * Generate content using Gemini AI
+ * @param {string} prompt
+ * @param {number} year
+ * @param {number} month
+ * @returns {Promise<Array>}
+ */
+export async function generateAIContent(prompt, year, month) {
+  const response = await fetch('/api/generate-ai', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ prompt, year, month }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to generate AI content');
+  }
+  const result = await response.json();
+  return result.items;
+}
+
+/**
+ * Batch insert content items
+ * @param {Array} items
+ * @returns {Promise<Array>}
+ */
+export async function createBatchContent(items) {
+  const response = await fetch('/api/content/batch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ items }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to batch create content');
+  }
+  const result = await response.json();
+  return result.items;
+}
+
+/**
  * Reset all data to mock defaults
  * @returns {Promise<boolean>}
  */

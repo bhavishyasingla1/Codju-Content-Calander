@@ -9,14 +9,23 @@ import './ContentRow.css';
 
 export default function ContentRow({
   item,
+  index,
   isExpanded,
   onToggleExpand,
   onUpdate,
   onDelete,
   onPreview,
   saveStatus,
+  onEditItem,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  isDragging,
+  isSelected,
+  onSelectChange,
 }) {
   const [localItem, setLocalItem] = useState({ ...item });
+  const [isDraggable, setIsDraggable] = useState(false);
 
   const handleInputChange = (field, value) => {
     const updated = { ...localItem, [field]: value };
@@ -45,12 +54,43 @@ export default function ContentRow({
     }
   };
 
+  const handleClose = () => {
+    onToggleExpand();
+
+    const isDefaultName = item.name === 'New Content Piece' || !item.name.trim();
+    const hasNoCaption = !item.caption?.trim();
+    const hasNoSummary = !item.summary?.trim();
+    const hasNoRichText = !item.richText?.trim() || item.richText === '<p><br></p>';
+    const hasNoAssets = !item.assets || item.assets.length === 0;
+    const hasNoPdf = !item.pdfAsset;
+    const hasNoThumbnail = !item.thumbnailAsset;
+
+    if (isDefaultName && hasNoCaption && hasNoSummary && hasNoRichText && hasNoAssets && hasNoPdf && hasNoThumbnail) {
+      onDelete(item.id, true);
+    }
+  };
+
   return (
     <>
-      <tr className={`content-row ${isExpanded ? 'content-row--expanded' : ''}`} id={`row-${item.id}`}>
+      <tr
+        className={`content-row ${isExpanded ? 'content-row--expanded' : ''} ${isDragging ? 'content-row--dragging' : ''}`}
+        id={`row-${item.id}`}
+        draggable={isDraggable}
+        onDragStart={(e) => {
+          setIsDraggable(false); // Reset once dragging initiates
+          onDragStart(e, index);
+        }}
+        onDragOver={(e) => onDragOver(e, index)}
+        onDragEnd={onDragEnd}
+      >
         {/* Cell: Drag Handle */}
         <td className="content-row__cell content-row__cell--drag">
-          <div className="content-row__drag-handle" title="Drag to reorder">
+          <div
+            className="content-row__drag-handle"
+            title="Drag to reorder"
+            onMouseDown={() => setIsDraggable(true)}
+            onMouseUp={() => setIsDraggable(false)}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <circle cx="9" cy="5" r="1.5" />
               <circle cx="9" cy="12" r="1.5" />
@@ -60,6 +100,16 @@ export default function ContentRow({
               <circle cx="15" cy="19" r="1.5" />
             </svg>
           </div>
+        </td>
+
+        {/* Cell: Checkbox selection */}
+        <td className="content-row__cell content-row__cell--checkbox" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onSelectChange}
+            className="content-row__checkbox"
+          />
         </td>
 
         {/* Cell: Date */}
@@ -125,7 +175,7 @@ export default function ContentRow({
         <td className="content-row__cell content-row__cell--center">
           <button
             className={`content-row__btn-upload ${fileCount > 0 ? 'content-row__btn-upload--has-files' : ''}`}
-            onClick={onToggleExpand}
+            onClick={() => onEditItem(item)}
             title={`${fileCount} files uploaded. Click to edit/upload.`}
             type="button"
           >
@@ -163,14 +213,15 @@ export default function ContentRow({
       {/* Expandable Editor Row */}
       {isExpanded && (
         <tr className="content-row__editor-row">
-          <td colSpan={10} className="content-row__editor-cell">
+          <td colSpan={11} className="content-row__editor-cell">
             <div className="content-row__editor-wrapper">
               <ContentEditor
                 item={item}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onPreview={onPreview}
-                onClose={onToggleExpand}
+                onClose={handleClose}
+                showSummary={true}
               />
             </div>
           </td>

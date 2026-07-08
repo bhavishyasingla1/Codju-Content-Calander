@@ -73,8 +73,36 @@ export function truncate(text, maxLength = 100) {
  */
 export function stripHtml(html) {
   if (!html) return '';
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return doc.body.textContent || '';
+  
+  // Replace tag blocks with carriage returns to preserve paragraph layout
+  let processed = html
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<li>/gi, '• ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/ul>/gi, '\n')
+    .replace(/<\/ol>/gi, '\n');
+
+  // Strip all other HTML tags
+  processed = processed.replace(/<[^>]*>/g, '');
+
+  // Decode common HTML entities
+  const entities = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'"
+  };
+  
+  for (const [entity, replacement] of Object.entries(entities)) {
+    processed = processed.replace(new RegExp(entity, 'g'), replacement);
+  }
+
+  // Normalize duplicate newlines and trim ends
+  return processed.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**

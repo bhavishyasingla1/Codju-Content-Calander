@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { isImageFile, isVideoFile, isPdfFile } from '../../utils/helpers';
+import { isImageFile, isVideoFile, isPdfFile, stripHtml } from '../../utils/helpers';
 import { downloadAsset } from '../../services/contentService';
 import './PreviewModal.css';
 
@@ -26,8 +26,7 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
   const handleCopy = () => {
     let textToCopy = '';
     if (richText) {
-      // Strip HTML tags for clean pasting
-      textToCopy = richText.replace(/<[^>]*>/g, '');
+      textToCopy = stripHtml(richText);
     } else if (caption) {
       textToCopy = caption;
     }

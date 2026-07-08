@@ -35,29 +35,30 @@
   transition: background-color var(--transition-fast);
 }
 
+.calendar-grid__cell:not(.calendar-grid__cell--empty) {
+  cursor: pointer;
+}
+
+.calendar-grid__cell:not(.calendar-grid__cell--empty):hover {
+  background-color: var(--color-bg-hover);
+}
+
 .calendar-grid__cell:nth-child(7n) {
   border-right: none;
 }
 
-.calendar-grid__cell--empty {
-  background: var(--color-bg-hover);
+.calendar-grid__cell--adjacent-month {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.calendar-grid__cell--today {
-  background: var(--color-primary-ghost);
+.calendar-grid__cell--adjacent-month .calendar-grid__day-number {
+  color: var(--color-text-secondary);
 }
 
-.calendar-grid__cell--today .calendar-grid__day-number {
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-}
+
 
 .calendar-grid__day-header {
   display: flex;
@@ -115,12 +116,13 @@
   width: 100%;
   cursor: pointer;
   transition: all var(--transition-fast);
+  animation: scaleIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .calendar-grid__item:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-xs);
-  filter: brightness(0.98);
+  filter: brightness(0.97);
 }
 
 .calendar-grid__item-title {

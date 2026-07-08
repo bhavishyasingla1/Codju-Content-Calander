@@ -8,7 +8,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { uploadAsset } from '../../services/contentService';
 import './ContentEditor.css';
 
-export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onClose }) {
+export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onClose, showSummary = false }) {
   const [formData, setFormData] = useState({ ...item });
 
   const saveFunction = useCallback(async () => {
@@ -69,7 +69,7 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
               assets={formData.assets || []}
               onUpload={handleUpload}
               onRemove={handleRemoveAsset}
-              onPreview={onPreview}
+              onPreview={(asset) => onPreview({ asset, caption: formData.caption })}
               accept="image/*,video/*,application/pdf"
             />
           </>
@@ -93,7 +93,7 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
               assets={(formData.assets || []).filter(a => a.type?.startsWith('image/'))}
               onUpload={handleUpload}
               onRemove={handleRemoveAsset}
-              onPreview={onPreview}
+              onPreview={(asset) => onPreview({ asset, caption: formData.caption })}
               multiple
               accept="image/*"
             />
@@ -113,7 +113,7 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
                   return { ...prev, pdfAsset: null };
                 });
               }}
-              onPreview={onPreview}
+              onPreview={(asset) => onPreview({ asset, caption: formData.caption })}
               accept=".pdf"
             />
           </>
@@ -137,7 +137,7 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
               assets={formData.assets || []}
               onUpload={handleUpload}
               onRemove={handleRemoveAsset}
-              onPreview={onPreview}
+              onPreview={(asset) => onPreview({ asset, caption: formData.caption })}
               accept="video/*"
             />
           </>
@@ -231,6 +231,19 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
             </select>
           </div>
         </div>
+
+        {showSummary && (
+          <div className="editor__field" style={{ marginTop: '16px' }}>
+            <label className="editor__label">Summary</label>
+            <textarea
+              className="editor__textarea"
+              value={formData.summary || ''}
+              onChange={(e) => handleChange('summary', e.target.value)}
+              placeholder="Brief summary of this content..."
+              rows={2}
+            />
+          </div>
+        )}
 
         {/* Type-specific fields */}
         <div className="editor__type-fields">

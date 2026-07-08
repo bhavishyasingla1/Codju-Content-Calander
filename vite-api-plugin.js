@@ -57,6 +57,113 @@ export function viteApiPlugin() {
         const parsedUrl = url.parse(req.url, true);
         const pathname = parsedUrl.pathname;
 
+        // Route: POST /api/generate-ai
+        if (pathname === '/api/generate-ai' && req.method === 'POST') {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const body = await parseBody(req);
+            const { prompt, year, month } = body;
+            
+            const apiKey = 'AQ.Ab8RN6JKinsY86LZmNCmGAJpa2QaRg-IfhQmIJCJpdxsNmWc0A';
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+            
+            const systemInstruction = `You are a professional content calendar assistant.
+Analyze the user's input ideas, scripts, schedule, or notes, and generate a structured content calendar for the month: ${year}-${String(month).padStart(2, '0')}.
+Format the output as a JSON array of objects. Do not include markdown code block formatting like \`\`\`json. Return ONLY the raw JSON string.
+
+Each object in the array must have the following structure:
+{
+  "date": "YYYY-MM-DD", // Must be a valid date in the month ${year}-${String(month).padStart(2, '0')}
+  "name": "Catchy Title", // Keep it short and professional, no bold/italic formatting
+  "type": "static" | "carousel" | "reel" | "text", // Match the most appropriate content type
+  "summary": "Short description of the content piece",
+  "caption": "The actual post caption to be published" // Write a complete, high-quality caption. DO NOT use any markdown asterisks like * or ** for bold. Use plain text with line breaks and emojis if suitable.
+}
+
+Ensure all dates fall exactly within the month ${year}-${String(month).padStart(2, '0')}. Spread them out reasonably unless the input specifies exact dates.`;
+
+            const geminiResponse = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                  responseMimeType: 'application/json'
+                }
+              })
+            });
+            
+            if (!geminiResponse.ok) {
+              const errText = await geminiResponse.text();
+              throw new Error(`Gemini API error: ${errText}`);
+            }
+            
+            const geminiData = await geminiResponse.json();
+            const responseText = geminiData.candidates[0].content.parts[0].text;
+            
+            const items = JSON.parse(responseText.trim());
+            res.end(JSON.stringify({ success: true, items }));
+          } catch (err) {
+            console.error('Error generating AI content:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // Route: POST /api/content/batch
+        if (pathname === '/api/content/batch' && req.method === 'POST') {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const body = await parseBody(req);
+            const { items } = body;
+            
+            if (!Array.isArray(items)) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Items must be an array' }));
+              return;
+            }
+            
+            const inserted = [];
+            for (const item of items) {
+              const now = new Date().toISOString();
+              const queryText = `
+                INSERT INTO content (
+                  id, date, name, type, summary, caption, platform, status, assets, rich_text, script, created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                RETURNING *
+              `;
+              const params = [
+                item.id || ('c' + Math.random().toString(36).substr(2, 9)),
+                item.date || now.split('T')[0],
+                item.name || 'Untitled Content',
+                item.type || 'static',
+                item.summary || '',
+                item.caption || '',
+                item.platform || 'instagram',
+                item.status || 'draft',
+                JSON.stringify(item.assets || []),
+                item.type === 'text' ? `<p>${item.caption || ''}</p>` : '',
+                item.script || '',
+                now,
+                now
+              ];
+              const result = await pool.query(queryText, params);
+              inserted.push(mapToFrontend(result.rows[0]));
+            }
+            
+            res.end(JSON.stringify({ success: true, items: inserted }));
+          } catch (err) {
+            console.error('Error batch creating content:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
         // Route: GET /api/content
         if (pathname === '/api/content' && req.method === 'GET') {
           const monthQuery = parsedUrl.query.month; // e.g. 2026-07

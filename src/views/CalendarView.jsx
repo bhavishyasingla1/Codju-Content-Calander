@@ -24,9 +24,20 @@ export default function CalendarView({
   // Render cells list
   const cells = [];
   
-  // Previous month blank cells
+  // Previous month cells
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevMonthDays = getDaysInMonth(prevYear, prevMonth);
+
   for (let i = 0; i < firstDayIndex; i++) {
-    cells.push(<div key={`empty-${i}`} className="calendar-grid__cell calendar-grid__cell--empty" />);
+    const dayNum = prevMonthDays - firstDayIndex + 1 + i;
+    cells.push(
+      <div key={`prev-${dayNum}`} className="calendar-grid__cell calendar-grid__cell--adjacent-month">
+        <div className="calendar-grid__day-header">
+          <span className="calendar-grid__day-number">{dayNum}</span>
+        </div>
+      </div>
+    );
   }
 
   // Active month day cells
@@ -34,17 +45,27 @@ export default function CalendarView({
     const items = getItemsForDay(day);
     const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     
-    // Check if cell represents today
-    const today = new Date();
-    const isToday = today.getFullYear() === year && (today.getMonth() + 1) === month && today.getDate() === day;
+    const handleCellClick = (e) => {
+      // Do not trigger if clicking on an existing content item or the plus button
+      if (!e.target.closest('.calendar-grid__item') && !e.target.closest('.calendar-grid__add-btn')) {
+        onCreateNewForDate(dateString);
+      }
+    };
 
     cells.push(
-      <div key={`day-${day}`} className={`calendar-grid__cell ${isToday ? 'calendar-grid__cell--today' : ''}`}>
+      <div
+        key={`day-${day}`}
+        className="calendar-grid__cell"
+        onClick={handleCellClick}
+      >
         <div className="calendar-grid__day-header">
           <span className="calendar-grid__day-number">{day}</span>
           <button
             className="calendar-grid__add-btn"
-            onClick={() => onCreateNewForDate(dateString)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateNewForDate(dateString);
+            }}
             title={`Add content on ${monthName} ${day}`}
             type="button"
           >
@@ -66,7 +87,10 @@ export default function CalendarView({
                   borderLeft: `3px solid ${typeInfo.color}`,
                   background: typeInfo.bg,
                 }}
-                onClick={() => onEditItem(item)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditItem(item);
+                }}
                 title={`${item.name} (${typeInfo.label})`}
                 type="button"
               >
@@ -75,6 +99,20 @@ export default function CalendarView({
               </button>
             );
           })}
+        </div>
+      </div>
+    );
+  }
+
+  // Next month cells to fill the 5 or 6-week grid uniformly (35 or 42 cells total)
+  const totalCells = firstDayIndex + daysInMonth;
+  const nextMonthDaysCount = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
+  
+  for (let day = 1; day <= nextMonthDaysCount; day++) {
+    cells.push(
+      <div key={`next-${day}`} className="calendar-grid__cell calendar-grid__cell--adjacent-month">
+        <div className="calendar-grid__day-header">
+          <span className="calendar-grid__day-number">{day}</span>
         </div>
       </div>
     );

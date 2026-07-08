@@ -60,6 +60,17 @@ export function useContent(year, month) {
     }
   }, []);
 
+  const batchAddContent = useCallback(async (items) => {
+    try {
+      const newItems = await contentService.createBatchContent(items);
+      setContent(prev => [...prev, ...newItems].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      return newItems;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
   const refreshContent = useCallback(() => {
     return fetchContent();
   }, [fetchContent]);
@@ -69,6 +80,7 @@ export function useContent(year, month) {
     loading,
     error,
     addContent,
+    batchAddContent,
     updateContentItem,
     removeContent,
     refreshContent,

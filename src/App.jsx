@@ -10,6 +10,8 @@ import LoadingSkeleton from './components/LoadingSkeleton/LoadingSkeleton';
 import PreviewModal from './components/PreviewModal/PreviewModal';
 import Footer from './components/Footer/Footer';
 import ContentEditor from './components/ContentEditor/ContentEditor';
+import AiModal from './components/AiModal/AiModal';
+import { getMonthName } from './utils/helpers';
 import './App.css';
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
     loading,
     error,
     addContent,
+    batchAddContent,
     updateContentItem,
     removeContent,
   } = useContent(year, month);
@@ -37,6 +40,7 @@ export default function App() {
 
   // Modals state
   const [editingItem, setEditingItem] = useState(null);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState(null);
   const [previewText, setPreviewText] = useState(null);
 
@@ -147,14 +151,33 @@ export default function App() {
   };
 
   const handleDeleteItem = async (id) => {
-    const confirmed = confirm('Are you sure you want to delete this content item?');
-    if (!confirmed) return;
-
     try {
       await removeContent(id);
       setEditingItem(null);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Auto-delete stray drafts when closed without changes
+  const handleCloseEditor = async (item) => {
+    setEditingItem(null);
+    if (!item) return;
+
+    const isDefaultName = item.name === 'New Content Piece' || !item.name.trim();
+    const hasNoCaption = !item.caption?.trim();
+    const hasNoSummary = !item.summary?.trim();
+    const hasNoRichText = !item.richText?.trim() || item.richText === '<p><br></p>';
+    const hasNoAssets = !item.assets || item.assets.length === 0;
+    const hasNoPdf = !item.pdfAsset;
+    const hasNoThumbnail = !item.thumbnailAsset;
+
+    if (isDefaultName && hasNoCaption && hasNoSummary && hasNoRichText && hasNoAssets && hasNoPdf && hasNoThumbnail) {
+      try {
+        await removeContent(item.id);
+      } catch (e) {
+        console.error('Failed to auto-delete empty item:', e);
+      }
     }
   };
 
@@ -200,6 +223,19 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="app-main animate-fade-in">
+        <div className="app-main__subheader">
+          <div className="app-main__subheader-left">
+            <h2 className="app-main__month-title">
+              {getMonthName(month)} {year}
+            </h2>
+          </div>
+          <div className="app-main__subheader-right">
+            <button className="app-main__ai-btn" onClick={() => setIsAiModalOpen(true)} type="button">
+              Generate Table
+            </button>
+          </div>
+        </div>
+
         {loading ? (
           <LoadingSkeleton view={view} />
         ) : error ? (
@@ -223,6 +259,9 @@ export default function App() {
                 onDelete={handleDeleteItem}
                 onPreview={handleOpenPreview}
                 onCreateNew={handleCreateNew}
+                onEditItem={setEditingItem}
+                year={year}
+                month={month}
               />
             )}
 
@@ -260,7 +299,7 @@ export default function App() {
               onUpdate={handleUpdateItem}
               onDelete={handleDeleteItem}
               onPreview={handleOpenPreview}
-              onClose={() => setEditingItem(null)}
+              onClose={() => handleCloseEditor(editingItem)}
             />
           </div>
         </div>
@@ -277,6 +316,16 @@ export default function App() {
             setPreviewText(null);
             setPreviewCaption(null);
           }}
+        />
+      )}
+
+      {/* AI Generator Modal */}
+      {isAiModalOpen && (
+        <AiModal
+          year={year}
+          month={month}
+          onGenerate={batchAddContent}
+          onClose={() => setIsAiModalOpen(false)}
         />
       )}
     </div>
