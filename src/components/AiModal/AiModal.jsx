@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { generateAIContent } from '../../services/contentService';
+import loaderGif from './loader.gif';
 import './AiModal.css';
 
 export default function AiModal({ year, month, onGenerate, onClose }) {
@@ -44,7 +45,7 @@ export default function AiModal({ year, month, onGenerate, onClose }) {
 
           {loading ? (
             <div className="ai-modal__loading">
-              <div className="ai-modal__spinner" />
+              <img src={loaderGif} className="ai-modal__loader-gif" alt="Panda loading..." />
               <p className="ai-modal__loading-text">Panda is writing the captions and scheduling your rows...</p>
             </div>
           ) : (

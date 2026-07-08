@@ -120,19 +120,10 @@
   gap: 20px;
 }
 
-.ai-modal__spinner {
-  width: 40px;
-  height: 40px;
-  border: 3.5px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: ai-spin 0.8s linear infinite;
-}
-
-@keyframes ai-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.ai-modal__loader-gif {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
 }
 
 .ai-modal__loading-text {
