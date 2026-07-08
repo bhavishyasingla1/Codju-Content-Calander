@@ -20,8 +20,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required parameters: prompt, year, month' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JKinsY86LZmNCmGAJpa2QaRg-IfhQmIJCJpdxsNmWc0A';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    const fallbackKeys = [
+      'AQ.Ab8RN6JKinsY86LZmNCmGAJpa2QaRg-IfhQmIJCJpdxsNmWc0A',
+      'AQ.Ab8RN6LFLPrCfwHcBDQ0edSpn4mPid2mc6h4zmaZya3GTWVWug'
+    ];
+    const userApiKey = process.env.GEMINI_API_KEY;
+    const apiKeys = userApiKey ? [userApiKey, ...fallbackKeys] : fallbackKeys;
 
     const systemInstruction = `You are a professional content calendar assistant.
 Analyze the user's input ideas, scripts, schedule, or notes, and generate a structured content calendar for the month: ${year}-${String(month).padStart(2, '0')}.
@@ -38,38 +42,57 @@ Each object in the array must have the following structure:
 
 Ensure all dates fall exactly within the month ${year}-${String(month).padStart(2, '0')}. Spread them out reasonably unless the input specifies exact dates.`;
 
-    const geminiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        generationConfig: {
-          responseMimeType: 'application/json'
-        }
-      })
-    });
+    let geminiResponse;
+    let lastError = null;
+    let responseText = '';
 
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
+    for (const key of apiKeys) {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
       try {
-        const parsed = JSON.parse(errText);
-        if (parsed.error && (parsed.error.status === 'RESOURCE_EXHAUSTED' || parsed.error.code === 429)) {
-          throw new Error('Gemini API Quota Exceeded: The shared free-tier key has reached its limit (20 requests/day). Please try again shortly or configure a custom GEMINI_API_KEY environment variable.');
+        geminiResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: {
+              responseMimeType: 'application/json'
+            }
+          })
+        });
+
+        if (geminiResponse.ok) {
+          const geminiData = await geminiResponse.json();
+          responseText = geminiData.candidates[0].content.parts[0].text;
+          lastError = null;
+          break; // Key succeeded!
         }
-        throw new Error(parsed.error.message || errText);
-      } catch (e) {
-        if (e.message.startsWith('Gemini API Quota Exceeded')) {
-          throw e;
+
+        const errText = await geminiResponse.text();
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.error && (parsed.error.status === 'RESOURCE_EXHAUSTED' || parsed.error.code === 429)) {
+            lastError = new Error(`Quota Exceeded: ${parsed.error.message}`);
+            console.warn(`Gemini API key ...${key.slice(-6)} rate limited. Trying next fallback key...`);
+            continue;
+          }
+          lastError = new Error(parsed.error.message || errText);
+        } catch (e) {
+          lastError = new Error(`Gemini API error: ${errText}`);
         }
-        throw new Error(`Gemini API error: ${errText}`);
+      } catch (err) {
+        lastError = err;
       }
     }
 
-    const geminiData = await geminiResponse.json();
-    const responseText = geminiData.candidates[0].content.parts[0].text;
+    if (lastError) {
+      if (lastError.message.includes('Quota Exceeded')) {
+        throw new Error('Gemini API Quota Exceeded: All fallback keys have reached their limits. Please try again shortly or configure a custom GEMINI_API_KEY environment variable.');
+      }
+      throw lastError;
+    }
 
     const items = JSON.parse(responseText.trim());
     return res.status(200).json({ success: true, items });
