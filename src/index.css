@@ -50,6 +50,12 @@
   --color-type-reel-bg: #FCE7F3;
   --color-type-text: #14B8A6;
   --color-type-text-bg: #CCFBF1;
+  --color-type-blog: #F59E0B;
+  --color-type-blog-bg: #FEF3C7;
+  --color-type-newsletter: #8B5CF6;
+  --color-type-newsletter-bg: #EDE9FE;
+  --color-type-casestudy: #06B6D4;
+  --color-type-casestudy-bg: #CFFAFE;
 
   /* Shadows */
   --shadow-xs: 0 1px 2px rgba(107, 33, 216, 0.04);

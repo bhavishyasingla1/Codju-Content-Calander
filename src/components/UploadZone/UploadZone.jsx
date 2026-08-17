@@ -8,21 +8,26 @@ export default function UploadZone({
   onRemove,
   onPreview,
   multiple = false,
-  accept = 'image/*',
+  accept = 'image/*,video/*,application/pdf,.pdf',
   label = 'Upload File',
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFiles = useCallback(async (files) => {
     if (!files || files.length === 0) return;
     setUploading(true);
+    setErrorMessage(null);
     try {
       const fileArray = Array.from(files);
       for (const file of fileArray) {
         await onUpload(file);
       }
+    } catch (err) {
+      console.error('File upload failed:', err);
+      setErrorMessage(err.message || 'Failed to upload file. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -54,32 +59,34 @@ export default function UploadZone({
   };
 
   const getFileIcon = (asset) => {
-    if (isImageFile(asset.name)) {
+    if (isImageFile(asset)) {
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
           <circle cx="8.5" cy="8.5" r="1.5" />
           <polyline points="21,15 16,10 5,21" />
         </svg>
       );
     }
-    if (isVideoFile(asset.name)) {
+    if (isVideoFile(asset)) {
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="5,3 19,12 5,21 5,3" />
         </svg>
       );
     }
-    if (isPdfFile(asset.name)) {
+    if (isPdfFile(asset)) {
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14,2 14,8 20,8" />
+          <line x1="9" y1="13" x2="15" y2="13" />
+          <line x1="9" y1="17" x2="13" y2="17" />
         </svg>
       );
     }
     return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
         <polyline points="13,2 13,9 20,9" />
       </svg>
@@ -89,6 +96,18 @@ export default function UploadZone({
   return (
     <div className="upload-zone">
       <label className="upload-zone__label">{label}</label>
+
+      {errorMessage && (
+        <div className="upload-zone__error animate-fade-in">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{errorMessage}</span>
+          <button type="button" onClick={() => setErrorMessage(null)} className="upload-zone__error-close">×</button>
+        </div>
+      )}
 
       {/* Drop area */}
       {(multiple || assets.length === 0) && (
@@ -111,7 +130,7 @@ export default function UploadZone({
           {uploading ? (
             <div className="upload-zone__uploading">
               <span className="upload-zone__spinner" />
-              <span>Uploading...</span>
+              <span>Uploading file...</span>
             </div>
           ) : (
             <>
@@ -121,7 +140,7 @@ export default function UploadZone({
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
               <p className="upload-zone__text">
-                Drag & drop {multiple ? 'files' : 'a file'} here
+                Drag & drop {multiple ? 'files (images, PDFs, videos)' : 'a file (image, PDF, video)'} here
               </p>
               <p className="upload-zone__or">or</p>
               <span className="upload-zone__browse">Browse Files</span>
@@ -136,7 +155,7 @@ export default function UploadZone({
           {assets.map((asset, idx) => (
             <div key={asset.id || idx} className="upload-zone__file">
               <div className="upload-zone__file-preview">
-                {isImageFile(asset.name) && asset.url ? (
+                {isImageFile(asset) && asset.url ? (
                   <img src={asset.url} alt={asset.name} className="upload-zone__thumbnail" />
                 ) : (
                   <div className="upload-zone__file-icon">
@@ -154,7 +173,7 @@ export default function UploadZone({
                 {onPreview && (
                   <button
                     className="upload-zone__file-btn"
-                    onClick={() => onPreview(asset)}
+                    onClick={() => onPreview(asset, idx)}
                     title="Preview"
                     type="button"
                   >

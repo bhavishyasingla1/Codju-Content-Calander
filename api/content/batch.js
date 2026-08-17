@@ -27,21 +27,22 @@ export default async function handler(req, res) {
       const now = new Date().toISOString();
       const queryText = `
         INSERT INTO content (
-          id, date, name, type, summary, caption, platform, status, assets, rich_text, script, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          id, date, name, type, category, summary, caption, platform, status, assets, rich_text, script, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `;
       const params = [
         item.id || ('c' + Math.random().toString(36).substr(2, 9)),
         item.date || now.split('T')[0],
         item.name || 'Untitled Content',
-        item.type || 'static',
+        item.type || (item.category === 'written' ? 'blog' : 'static'),
+        item.category || 'social',
         item.summary || '',
         item.caption || '',
-        item.platform || 'instagram',
+        item.platform || (item.category === 'written' ? 'website' : 'instagram'),
         item.status || 'draft',
         JSON.stringify(item.assets || []),
-        item.type === 'text' ? `<p>${item.caption || ''}</p>` : '',
+        item.richText || (item.type === 'text' ? `<p>${item.caption || ''}</p>` : ''),
         item.script || '',
         now,
         now

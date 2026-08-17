@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ContentRow from '../components/ContentRow/ContentRow';
+import { useAuth } from '../context/AuthContext';
+import { safeJsonParse } from '../utils/helpers';
 import './ListView.css';
 
 export default function ListView({
@@ -9,9 +11,11 @@ export default function ListView({
   onPreview,
   onCreateNew,
   onEditItem,
+  onOpenRevision,
   year,
   month,
 }) {
+  const { isAdmin, openPinModal } = useAuth();
   const [expandedId, setExpandedId] = useState(null);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [localContent, setLocalContent] = useState([]);
@@ -25,15 +29,17 @@ export default function ListView({
     
     let sortedContent = [...content];
     if (storedOrder) {
-      const idArray = JSON.parse(storedOrder);
-      sortedContent.sort((a, b) => {
-        const idxA = idArray.indexOf(a.id);
-        const idxB = idArray.indexOf(b.id);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
-        return 0;
-      });
+      const idArray = safeJsonParse(storedOrder, []);
+      if (Array.isArray(idArray) && idArray.length > 0) {
+        sortedContent.sort((a, b) => {
+          const idxA = idArray.indexOf(a.id);
+          const idxB = idArray.indexOf(b.id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return 0;
+        });
+      }
     }
     setLocalContent(sortedContent);
   }, [content, year, month]);
@@ -167,6 +173,7 @@ export default function ListView({
                 onDelete={onDelete}
                 onPreview={onPreview}
                 onEditItem={onEditItem}
+                onOpenRevision={onOpenRevision}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
@@ -180,15 +187,25 @@ export default function ListView({
       </div>
 
       <div className="list-view__footer-actions">
-        <button className="list-view__add-row" onClick={onCreateNew} type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Add Row
-        </button>
+        {isAdmin ? (
+          <button className="list-view__add-row" onClick={onCreateNew} type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Row
+          </button>
+        ) : (
+          <button className="list-view__add-row" onClick={() => openPinModal()} type="button" title="Unlock Admin to add rows">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span>Unlock Admin to Add Rows</span>
+          </button>
+        )}
 
-        {selectedIds.length > 0 && (
+        {isAdmin && selectedIds.length > 0 && (
           <button className="list-view__delete-bulk animate-scale-in" onClick={handleBulkDelete} type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3,6 5,6 21,6" />

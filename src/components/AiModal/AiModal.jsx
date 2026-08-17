@@ -3,7 +3,7 @@ import { generateAIContent } from '../../services/contentService';
 import loaderGif from './loader.gif';
 import './AiModal.css';
 
-export default function AiModal({ year, month, onGenerate, onClose }) {
+export default function AiModal({ year, month, category = 'social', onGenerate, onClose }) {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -16,7 +16,7 @@ export default function AiModal({ year, month, onGenerate, onClose }) {
     setError(null);
 
     try {
-      const items = await generateAIContent(prompt, year, month);
+      const items = await generateAIContent(prompt, year, month, category);
       onGenerate(items);
       onClose();
     } catch (err) {
@@ -27,11 +27,15 @@ export default function AiModal({ year, month, onGenerate, onClose }) {
     }
   };
 
+  const isWritten = category === 'written';
+
   return (
     <div className="ai-modal-backdrop" onClick={onClose}>
       <div className="ai-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="ai-modal__header">
-          <h3 className="ai-modal__title">Generate Content Schedule with AI</h3>
+          <h3 className="ai-modal__title">
+            {isWritten ? 'Generate Written Content Schedule (Blogs & Newsletters)' : 'Generate Social Content Schedule with AI'}
+          </h3>
           <button className="ai-modal__close-btn" onClick={onClose} title="Close" type="button">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -49,17 +53,24 @@ export default function AiModal({ year, month, onGenerate, onClose }) {
               <div className="ai-modal__loading-line-container">
                 <div className="ai-modal__loading-line" />
               </div>
-              <p className="ai-modal__loading-text">Panda is writing the captions and scheduling your rows...</p>
+              <p className="ai-modal__loading-text">
+                {isWritten ? 'Panda is outlining articles and scheduling your editorial calendar...' : 'Panda is writing captions and scheduling your content rows...'}
+              </p>
             </div>
           ) : (
             <>
               <div className="ai-modal__field">
-                <label className="ai-modal__label">Paste Your Content Ideas, Scripts, or Outline</label>
+                <label className="ai-modal__label">
+                  {isWritten ? 'Paste Your Article Topics, Outlines, or Themes' : 'Paste Your Content Ideas, Scripts, or Outline'}
+                </label>
                 <textarea
                   className="ai-modal__textarea"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Example: 'Create 5 posts for a marketing dashboard startup. One static welcome, one carousel explaining features, one reel previewing team workflow, and two LinkedIn text posts sharing stats.'"
+                  placeholder={isWritten
+                    ? "Example: 'Plan 4 weekly blog posts and 2 bi-weekly newsletters for August. Topic: Next.js performance optimization, Postgres indexing tips, and building AI agents for production.'"
+                    : "Example: 'Create 5 posts for a marketing dashboard startup. One static welcome, one carousel explaining features, one reel previewing team workflow, and two LinkedIn text posts sharing stats.'"
+                  }
                   required
                   rows={8}
                 />

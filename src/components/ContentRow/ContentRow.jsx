@@ -1,10 +1,8 @@
-import { useState } from 'react';
-import TypeBadge from '../TypeBadge/TypeBadge';
+import { useState, useEffect } from 'react';
 import StatusBadge from '../StatusBadge/StatusBadge';
 import ContentEditor from '../ContentEditor/ContentEditor';
-import SaveButton from '../SaveButton/SaveButton';
-import { formatDate } from '../../utils/helpers';
-import { PLATFORMS, CONTENT_TYPES } from '../../data/mockContent';
+import { CONTENT_TYPES } from '../../data/mockContent';
+import { useAuth } from '../../context/AuthContext';
 import './ContentRow.css';
 
 export default function ContentRow({
@@ -15,8 +13,8 @@ export default function ContentRow({
   onUpdate,
   onDelete,
   onPreview,
-  saveStatus,
   onEditItem,
+  onOpenRevision,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -24,40 +22,134 @@ export default function ContentRow({
   isSelected,
   onSelectChange,
 }) {
-  const [localItem, setLocalItem] = useState({ ...item });
+  const { isViewer, isDesigner, isAdmin, openPinModal } = useAuth();
+  const [localItem, setLocalItem] = useState(item);
   const [isDraggable, setIsDraggable] = useState(false);
 
+  useEffect(() => {
+    setLocalItem(item);
+  }, [item]);
+
   const handleInputChange = (field, value) => {
+    if (isViewer) {
+      openPinModal();
+      return;
+    }
     const updated = { ...localItem, [field]: value };
     setLocalItem(updated);
     onUpdate(item.id, { [field]: value });
   };
 
-  const handleStatusChange = (newStatus) => {
-    const updated = { ...localItem, status: newStatus };
-    setLocalItem(updated);
-    onUpdate(item.id, { status: newStatus });
+  const handleStatusChange = () => {
+    if (isViewer) {
+      openPinModal();
+      return;
+    }
+    if (isAdmin) {
+      const order = ['draft', 'pending', 'revision', 'ready', 'published'];
+      const currentIdx = order.indexOf(item.status);
+      const nextStatus = order[(currentIdx + 1) % order.length];
+      onUpdate(item.id, { status: nextStatus });
+    }
   };
 
-  const fileCount = item.assets?.length || 0;
-  const hasMedia = fileCount > 0 || !!item.thumbnailAsset || !!item.pdfAsset;
+  const handleApprove = (e) => {
+    e?.stopPropagation();
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
+    onUpdate(item.id, {
+      status: 'ready',
+      reviewedAt: new Date().toISOString(),
+    });
+  };
+
+  const handlePublish = (e) => {
+    e?.stopPropagation();
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
+    onUpdate(item.id, {
+      status: 'published',
+    });
+  };
+
+  const handleRequestRevision = (e) => {
+    e?.stopPropagation();
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
+    onOpenRevision?.(item);
+  };
+
+  const handleClearRevision = (e) => {
+    e?.stopPropagation();
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
+    onUpdate(item.id, {
+      feedback: '',
+      feedbackAssets: [],
+      status: 'pending',
+    });
+  };
+
+  const handleViewFeedback = (e) => {
+    e?.stopPropagation();
+    onOpenRevision?.(item);
+  };
+
+  const handleSendForApproval = (e) => {
+    e?.stopPropagation();
+    if (isViewer) {
+      openPinModal();
+      return;
+    }
+    onUpdate(item.id, {
+      status: 'pending',
+    });
+  };
+
+  const fileCount = (item.assets?.length || 0) + (item.pdfAsset ? 1 : 0);
+  const hasMedia = fileCount > 0 || !!item.thumbnailAsset || (item.type === 'text' && !!item.richText?.trim() && item.richText !== '<p><br></p>');
+
+  // If content is present/uploaded from designer side, effective status is 'pending' (In Review).
+  // If nothing is visible/uploaded (!hasMedia), it shows 'draft'.
+  const currentStatus = (item.status === 'draft' && hasMedia) ? 'pending' : item.status;
 
   const handleViewPreview = () => {
-    if (item.type === 'text' && item.richText) {
-      onPreview({ richText: item.richText, caption: item.caption });
-    } else if (item.thumbnailAsset) {
-      onPreview({ asset: item.thumbnailAsset, caption: item.caption });
-    } else if (item.assets && item.assets.length > 0) {
-      onPreview({ asset: item.assets[0], caption: item.caption });
-    } else if (item.pdfAsset) {
-      onPreview({ asset: item.pdfAsset, caption: item.caption });
+    const allAssets = [];
+    if (item.assets && item.assets.length > 0) {
+      allAssets.push(...item.assets);
+    }
+    if (item.pdfAsset) {
+      allAssets.push(item.pdfAsset);
+    }
+    if (allAssets.length === 0 && item.thumbnailAsset) {
+      allAssets.push(item.thumbnailAsset);
+    }
+
+    if (allAssets.length > 0) {
+      onPreview({
+        assets: allAssets,
+        initialIndex: 0,
+        richText: item.type === 'text' ? item.richText : null,
+      });
+    } else if (item.richText) {
+      onPreview({
+        richText: item.richText,
+        caption: item.caption,
+      });
     }
   };
 
   const handleClose = () => {
     onToggleExpand();
-
-    const isDefaultName = item.name === 'New Content Piece' || !item.name.trim();
+    const isDefaultName = !item.name || item.name.trim() === 'Untitled Content';
     const hasNoCaption = !item.caption?.trim();
     const hasNoSummary = !item.summary?.trim();
     const hasNoRichText = !item.richText?.trim() || item.richText === '<p><br></p>';
@@ -65,7 +157,7 @@ export default function ContentRow({
     const hasNoPdf = !item.pdfAsset;
     const hasNoThumbnail = !item.thumbnailAsset;
 
-    if (isDefaultName && hasNoCaption && hasNoSummary && hasNoRichText && hasNoAssets && hasNoPdf && hasNoThumbnail) {
+    if (isAdmin && isDefaultName && hasNoCaption && hasNoSummary && hasNoRichText && hasNoAssets && hasNoPdf && hasNoThumbnail) {
       onDelete(item.id, true);
     }
   };
@@ -75,31 +167,35 @@ export default function ContentRow({
       <tr
         className={`content-row ${isExpanded ? 'content-row--expanded' : ''} ${isDragging ? 'content-row--dragging' : ''}`}
         id={`row-${item.id}`}
-        draggable={isDraggable}
+        draggable={isAdmin && isDraggable}
         onDragStart={(e) => {
-          setIsDraggable(false); // Reset once dragging initiates
-          onDragStart(e, index);
+          setIsDraggable(false);
+          onDragStart?.(e, index);
         }}
-        onDragOver={(e) => onDragOver(e, index)}
+        onDragOver={(e) => onDragOver?.(e, index)}
         onDragEnd={onDragEnd}
       >
         {/* Cell: Drag Handle */}
         <td className="content-row__cell content-row__cell--drag">
-          <div
-            className="content-row__drag-handle"
-            title="Drag to reorder"
-            onMouseDown={() => setIsDraggable(true)}
-            onMouseUp={() => setIsDraggable(false)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="9" cy="5" r="1.5" />
-              <circle cx="9" cy="12" r="1.5" />
-              <circle cx="9" cy="19" r="1.5" />
-              <circle cx="15" cy="5" r="1.5" />
-              <circle cx="15" cy="12" r="1.5" />
-              <circle cx="15" cy="19" r="1.5" />
-            </svg>
-          </div>
+          {isAdmin ? (
+            <div
+              className="content-row__drag-handle"
+              title="Drag to reorder"
+              onMouseDown={() => setIsDraggable(true)}
+              onMouseUp={() => setIsDraggable(false)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="9" cy="5" r="1.5" />
+                <circle cx="9" cy="12" r="1.5" />
+                <circle cx="9" cy="19" r="1.5" />
+                <circle cx="15" cy="5" r="1.5" />
+                <circle cx="15" cy="12" r="1.5" />
+                <circle cx="15" cy="19" r="1.5" />
+              </svg>
+            </div>
+          ) : (
+            <span style={{ color: 'var(--color-text-muted)', opacity: 0.3 }}>•</span>
+          )}
         </td>
 
         {/* Cell: Checkbox selection */}
@@ -107,7 +203,8 @@ export default function ContentRow({
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={onSelectChange}
+            onChange={isAdmin ? onSelectChange : undefined}
+            disabled={!isAdmin}
             className="content-row__checkbox"
           />
         </td>
@@ -119,6 +216,7 @@ export default function ContentRow({
             className="content-row__input content-row__input--date"
             value={localItem.date || ''}
             onChange={(e) => handleInputChange('date', e.target.value)}
+            readOnly={!isAdmin}
           />
         </td>
 
@@ -130,20 +228,27 @@ export default function ContentRow({
             value={localItem.name || ''}
             onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="Content name..."
+            readOnly={!isAdmin}
           />
         </td>
 
         {/* Cell: Type */}
         <td className="content-row__cell content-row__cell--type">
-          <select
-            className="content-row__select"
-            value={localItem.type}
-            onChange={(e) => handleInputChange('type', e.target.value)}
-          >
-            {CONTENT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+          {isAdmin ? (
+            <select
+              className="content-row__select"
+              value={localItem.type}
+              onChange={(e) => handleInputChange('type', e.target.value)}
+            >
+              {CONTENT_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          ) : (
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)' }}>
+              {CONTENT_TYPES.find(t => t.value === localItem.type)?.label || localItem.type}
+            </span>
+          )}
         </td>
 
         {/* Cell: Summary */}
@@ -154,6 +259,7 @@ export default function ContentRow({
             value={localItem.summary || ''}
             onChange={(e) => handleInputChange('summary', e.target.value)}
             placeholder="Enter summary..."
+            readOnly={!isAdmin}
           />
         </td>
 
@@ -176,7 +282,7 @@ export default function ContentRow({
           <button
             className={`content-row__btn-upload ${fileCount > 0 ? 'content-row__btn-upload--has-files' : ''}`}
             onClick={() => onEditItem(item)}
-            title={`${fileCount} files uploaded. Click to edit/upload.`}
+            title={isViewer ? 'Click to view assets' : `${fileCount} files uploaded. Click to edit/upload.`}
             type="button"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -204,13 +310,101 @@ export default function ContentRow({
           </button>
         </td>
 
-        {/* Cell: Status */}
+        {/* Cell: Status & Approval Action Buttons */}
         <td className="content-row__cell content-row__cell--status">
-          <StatusBadge status={item.status} onClick={handleStatusChange} size="small" />
+          <div className="content-row__approval-group">
+            <StatusBadge
+              status={currentStatus}
+              onClick={handleStatusChange}
+              onOpenRevision={handleViewFeedback}
+              feedback={item.feedback}
+              disabled={isViewer || isDesigner}
+              size="small"
+            />
+
+            {/* ADMIN ACTIONS: When content is uploaded/pending review */}
+            {isAdmin && currentStatus === 'pending' && (
+              <>
+                <button
+                  type="button"
+                  className="content-row__quick-btn content-row__quick-btn--approve"
+                  onClick={handleApprove}
+                  title="Approve creative (Ready to publish)"
+                >
+                  ✓ Approve
+                </button>
+                <button
+                  type="button"
+                  className="content-row__quick-btn content-row__quick-btn--changes"
+                  onClick={handleRequestRevision}
+                  title="Request changes with feedback notes"
+                >
+                  ✕ Changes
+                </button>
+              </>
+            )}
+
+            {/* ADMIN ACTIONS: Mark as Published */}
+            {isAdmin && currentStatus === 'ready' && (
+              <button
+                type="button"
+                className="content-row__quick-btn content-row__quick-btn--approve"
+                onClick={handlePublish}
+                title="Mark as Published on Zoho Social"
+              >
+                Publish 🚀
+              </button>
+            )}
+
+            {/* ADMIN ACTIONS: When status is 'revision' */}
+            {isAdmin && currentStatus === 'revision' && (
+              <>
+                <button
+                  type="button"
+                  className="content-row__quick-btn content-row__quick-btn--approve"
+                  onClick={handleApprove}
+                  title="Approve creative directly (Ready to publish)"
+                >
+                  ✓ Approve
+                </button>
+                <button
+                  type="button"
+                  className="content-row__quick-btn content-row__quick-btn--changes"
+                  onClick={handleClearRevision}
+                  title="Remove 'Needs Changes' status and clear feedback"
+                >
+                  ✕ Remove
+                </button>
+              </>
+            )}
+
+            {/* DESIGNER ACTIONS: Send for Approval when in draft */}
+            {(isDesigner || (!isAdmin && !isViewer)) && currentStatus === 'draft' && (
+              <button
+                type="button"
+                className="content-row__quick-btn content-row__quick-btn--send"
+                onClick={handleSendForApproval}
+                title="Send creative to Admin for approval"
+              >
+                Send for Approval 🚀
+              </button>
+            )}
+
+            {/* DESIGNER ACTIONS: When status is Needs Changes */}
+            {(isDesigner || (!isAdmin && !isViewer)) && currentStatus === 'revision' && (
+              <button
+                type="button"
+                className="content-row__quick-btn content-row__quick-btn--send"
+                onClick={handleSendForApproval}
+                title="Resubmit updated creative for approval"
+              >
+                Resubmit 🚀
+              </button>
+            )}
+          </div>
         </td>
       </tr>
 
-      {/* Expandable Editor Row */}
       {isExpanded && (
         <tr className="content-row__editor-row">
           <td colSpan={11} className="content-row__editor-cell">
@@ -221,6 +415,7 @@ export default function ContentRow({
                 onDelete={onDelete}
                 onPreview={onPreview}
                 onClose={handleClose}
+                onOpenRevision={() => onOpenRevision?.(item)}
                 showSummary={true}
               />
             </div>

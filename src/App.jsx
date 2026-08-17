@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useContent } from './hooks/useContent';
 import { useSearch } from './hooks/useSearch';
 import TopNav from './components/TopNav/TopNav';
@@ -8,17 +8,26 @@ import CalendarView from './views/CalendarView';
 import EmptyState from './components/EmptyState/EmptyState';
 import LoadingSkeleton from './components/LoadingSkeleton/LoadingSkeleton';
 import PreviewModal from './components/PreviewModal/PreviewModal';
+import PinModal from './components/PinModal/PinModal';
+import RevisionModal from './components/RevisionModal/RevisionModal';
 import Footer from './components/Footer/Footer';
 import ContentEditor from './components/ContentEditor/ContentEditor';
 import AiModal from './components/AiModal/AiModal';
 import MonthNotes from './components/MonthNotes/MonthNotes';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { getMonthName } from './utils/helpers';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
-export default function App() {
-  const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState(7); // July 2026 default
+function MainApp() {
+  const { isAdmin, isPinModalOpen, closePinModal, openPinModal } = useAuth();
+
+  // Always default to the current active month and year
+  const currentDate = useMemo(() => new Date(), []);
+  const [year, setYear] = useState(() => currentDate.getFullYear());
+  const [month, setMonth] = useState(() => currentDate.getMonth() + 1);
   const [view, setView] = useState('list'); // 'list' | 'grid' | 'calendar'
+  const [activeCategory, setActiveCategory] = useState('social'); // 'social' | 'written'
 
   // Service CRUD Hook
   const {
@@ -31,19 +40,39 @@ export default function App() {
     removeContent,
   } = useContent(year, month);
 
-  // Search Hook
+  // Filter content by current active category (Social vs Written)
+  const categoryContent = useMemo(() => {
+    return content.filter(item => (item.category || 'social') === activeCategory);
+  }, [content, activeCategory]);
+
+  // Counts for tab badges
+  const socialCount = useMemo(() => {
+    return content.filter(item => (item.category || 'social') === 'social').length;
+  }, [content]);
+
+  const writtenCount = useMemo(() => {
+    return content.filter(item => item.category === 'written').length;
+  }, [content]);
+
+  // Search Hook on filtered category items
   const {
     query: searchQuery,
     setQuery: setSearchQuery,
     filteredContent,
     clearSearch,
-  } = useSearch(content);
+  } = useSearch(categoryContent);
 
   // Modals state
   const [editingItem, setEditingItem] = useState(null);
+  const [revisionItem, setRevisionItem] = useState(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+
+  // Preview state
   const [previewAsset, setPreviewAsset] = useState(null);
+  const [previewAssets, setPreviewAssets] = useState([]);
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
   const [previewText, setPreviewText] = useState(null);
+  const [previewCaption, setPreviewCaption] = useState(null);
 
   // Month navigation
   const handlePrevMonth = () => {
@@ -55,6 +84,7 @@ export default function App() {
       return prev - 1;
     });
     setEditingItem(null);
+    setRevisionItem(null);
   };
 
   const handleNextMonth = () => {
@@ -66,29 +96,40 @@ export default function App() {
       return prev + 1;
     });
     setEditingItem(null);
+    setRevisionItem(null);
   };
 
   const handleCreateMonth = () => {
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
     setYear(nextYear);
     setMonth(nextMonth);
     setEditingItem(null);
+    setRevisionItem(null);
   };
 
   const handleDateChange = (newYear, newMonth) => {
     setYear(newYear);
     setMonth(newMonth);
     setEditingItem(null);
+    setRevisionItem(null);
   };
 
   // Content CRUD Triggers
   const handleCreateNew = async () => {
-    // Find all content for the current year/month
-    const currentMonthItems = content.filter(item => {
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
+
+    const currentMonthItems = categoryContent.filter(item => {
       return item.date.startsWith(`${year}-${String(month).padStart(2, '0')}`);
     });
-    
+
     let dateStr = `${year}-${String(month).padStart(2, '0')}-01`;
     if (currentMonthItems.length > 0) {
       const dates = currentMonthItems
@@ -97,10 +138,8 @@ export default function App() {
       if (dates.length > 0) {
         const maxTime = Math.max(...dates);
         const maxDate = new Date(maxTime);
-        // Increment by 1 day
         maxDate.setDate(maxDate.getDate() + 1);
-        
-        // Ensure it's still within the same month
+
         if (maxDate.getFullYear() === year && (maxDate.getMonth() + 1) === month) {
           dateStr = maxDate.toISOString().split('T')[0];
         } else {
@@ -110,14 +149,19 @@ export default function App() {
       }
     }
 
+    const defaultType = activeCategory === 'written' ? 'blog' : 'static';
+    const defaultPlatform = activeCategory === 'written' ? 'website' : 'instagram';
+    const defaultName = activeCategory === 'written' ? 'New Article Draft' : 'New Content Piece';
+
     try {
       const newItem = await addContent({
         date: dateStr,
-        name: 'New Content Piece',
-        type: 'static',
+        name: defaultName,
+        type: defaultType,
+        category: activeCategory,
+        platform: defaultPlatform,
         status: 'draft',
       });
-      // In grid/calendar view, open editing modal immediately. In list view, row will appear.
       if (view !== 'list') {
         setEditingItem(newItem);
       }
@@ -127,11 +171,21 @@ export default function App() {
   };
 
   const handleCreateNewForDate = async (dateString) => {
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
+    const defaultType = activeCategory === 'written' ? 'blog' : 'static';
+    const defaultPlatform = activeCategory === 'written' ? 'website' : 'instagram';
+    const defaultName = activeCategory === 'written' ? 'New Article Draft' : 'New Content Piece';
+
     try {
       const newItem = await addContent({
         date: dateString,
-        name: 'New Content Piece',
-        type: 'static',
+        name: defaultName,
+        type: defaultType,
+        category: activeCategory,
+        platform: defaultPlatform,
         status: 'draft',
       });
       setEditingItem(newItem);
@@ -146,15 +200,25 @@ export default function App() {
       if (editingItem && editingItem.id === id) {
         setEditingItem(updated);
       }
+      if (revisionItem && revisionItem.id === id) {
+        setRevisionItem(updated);
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
   const handleDeleteItem = async (id) => {
+    if (!isAdmin) {
+      openPinModal();
+      return;
+    }
     try {
       await removeContent(id);
       setEditingItem(null);
+      if (revisionItem && revisionItem.id === id) {
+        setRevisionItem(null);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -165,7 +229,7 @@ export default function App() {
     setEditingItem(null);
     if (!item) return;
 
-    const isDefaultName = item.name === 'New Content Piece' || !item.name.trim();
+    const isDefaultName = item.name === 'New Content Piece' || item.name === 'New Article Draft' || !item.name.trim();
     const hasNoCaption = !item.caption?.trim();
     const hasNoSummary = !item.summary?.trim();
     const hasNoRichText = !item.richText?.trim() || item.richText === '<p><br></p>';
@@ -173,7 +237,7 @@ export default function App() {
     const hasNoPdf = !item.pdfAsset;
     const hasNoThumbnail = !item.thumbnailAsset;
 
-    if (isDefaultName && hasNoCaption && hasNoSummary && hasNoRichText && hasNoAssets && hasNoPdf && hasNoThumbnail) {
+    if (isAdmin && isDefaultName && hasNoCaption && hasNoSummary && hasNoRichText && hasNoAssets && hasNoPdf && hasNoThumbnail) {
       try {
         await removeContent(item.id);
       } catch (e) {
@@ -182,27 +246,53 @@ export default function App() {
     }
   };
 
-  // Preview triggers
-  const [previewCaption, setPreviewCaption] = useState(null);
-
+  // Preview triggers with multi-image support
   const handleOpenPreview = (target) => {
     if (!target) return;
-    
-    // Check if target is a structured object or a direct asset
-    if (target.asset !== undefined || target.richText !== undefined) {
+
+    if (target.assets && Array.isArray(target.assets) && target.assets.length > 0) {
+      setPreviewAssets(target.assets);
+      setPreviewInitialIndex(target.initialIndex || 0);
+      setPreviewAsset(target.assets[target.initialIndex || 0]);
+      setPreviewText(null);
+      setPreviewCaption(target.caption || null);
+    } else if (target.asset !== undefined || target.richText !== undefined) {
       setPreviewAsset(target.asset || null);
+      setPreviewAssets(target.asset ? [target.asset] : []);
+      setPreviewInitialIndex(0);
       setPreviewText(target.richText || null);
       setPreviewCaption(target.caption || null);
     } else {
       if (target.url) {
         setPreviewAsset(target);
+        setPreviewAssets([target]);
+        setPreviewInitialIndex(0);
         setPreviewText(null);
       } else if (target.richText) {
         setPreviewText(target.richText);
         setPreviewAsset(null);
+        setPreviewAssets([]);
       }
       setPreviewCaption(target.caption || null);
     }
+  };
+
+  // Revision Modal Handlers
+  const handleSaveFeedback = async ({ feedback, feedbackAssets, status }) => {
+    if (!revisionItem) return;
+    await handleUpdateItem(revisionItem.id, {
+      feedback,
+      feedbackAssets,
+      status: status || 'revision',
+      reviewedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleResubmitForReview = async () => {
+    if (!revisionItem) return;
+    await handleUpdateItem(revisionItem.id, {
+      status: 'pending',
+    });
   };
 
   return (
@@ -229,9 +319,46 @@ export default function App() {
             <h2 className="app-main__month-title">
               {getMonthName(month)} {year}
             </h2>
+
+            {/* Category Channel Switcher */}
+            <div className="app-category-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeCategory === 'social'}
+                className={`app-category-tab ${activeCategory === 'social' ? 'app-category-tab--active' : ''}`}
+                onClick={() => setActiveCategory('social')}
+              >
+                <span>📱 Social Content</span>
+                <span className="app-category-tab__badge">{socialCount}</span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeCategory === 'written'}
+                className={`app-category-tab ${activeCategory === 'written' ? 'app-category-tab--active' : ''}`}
+                onClick={() => setActiveCategory('written')}
+              >
+                <span>✍️ Written Content (Blogs & Newsletters)</span>
+                <span className="app-category-tab__badge">{writtenCount}</span>
+              </button>
+            </div>
           </div>
+
           <div className="app-main__subheader-right">
-            <button className="app-main__ai-btn" onClick={() => setIsAiModalOpen(true)} type="button">
+            <button
+              className="app-main__ai-btn"
+              onClick={() => {
+                if (isAdmin) {
+                  setIsAiModalOpen(true);
+                } else {
+                  openPinModal();
+                }
+              }}
+              type="button"
+              title={`Generate ${activeCategory === 'written' ? 'editorial articles schedule' : 'social content schedule'} with AI`}
+            >
               Generate Table
             </button>
           </div>
@@ -261,6 +388,7 @@ export default function App() {
                 onPreview={handleOpenPreview}
                 onCreateNew={handleCreateNew}
                 onEditItem={setEditingItem}
+                onOpenRevision={setRevisionItem}
                 year={year}
                 month={month}
               />
@@ -286,7 +414,8 @@ export default function App() {
             )}
           </>
         )}
-        <MonthNotes year={year} month={month} />
+
+        <MonthNotes year={year} month={month} category={activeCategory} />
       </main>
 
       {/* Footer */}
@@ -302,22 +431,41 @@ export default function App() {
               onDelete={handleDeleteItem}
               onPreview={handleOpenPreview}
               onClose={() => handleCloseEditor(editingItem)}
+              onOpenRevision={() => setRevisionItem(editingItem)}
             />
           </div>
         </div>
       )}
 
-      {/* Lightbox Preview Modal */}
-      {(previewAsset || previewText) && (
+      {/* Multi-Image Carousel & PDF Lightbox Preview Modal */}
+      {(previewAsset || previewAssets.length > 0 || previewText) && (
         <PreviewModal
           asset={previewAsset}
+          assets={previewAssets}
+          initialIndex={previewInitialIndex}
           richText={previewText}
           caption={previewCaption}
           onClose={() => {
             setPreviewAsset(null);
+            setPreviewAssets([]);
+            setPreviewInitialIndex(0);
             setPreviewText(null);
             setPreviewCaption(null);
           }}
+        />
+      )}
+
+      {/* PIN Unlock Modal */}
+      <PinModal isOpen={isPinModalOpen} onClose={closePinModal} />
+
+      {/* Revision Feedback Modal */}
+      {revisionItem && (
+        <RevisionModal
+          contentItem={revisionItem}
+          onSaveFeedback={handleSaveFeedback}
+          onResubmitForReview={handleResubmitForReview}
+          onPreviewAsset={handleOpenPreview}
+          onClose={() => setRevisionItem(null)}
         />
       )}
 
@@ -326,10 +474,21 @@ export default function App() {
         <AiModal
           year={year}
           month={month}
+          category={activeCategory}
           onGenerate={batchAddContent}
           onClose={() => setIsAiModalOpen(false)}
         />
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

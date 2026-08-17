@@ -152,32 +152,86 @@ export function getFileExtension(filename) {
 }
 
 /**
- * Check if a file is an image
- * @param {string} filename
+ * Check if a file or asset is an image
+ * @param {string|object} input
  * @returns {boolean}
  */
-export function isImageFile(filename) {
+export function isImageFile(input) {
+  if (!input) return false;
+  if (typeof input === 'object') {
+    if (input.type?.startsWith('image/')) return true;
+    if (input.name && isImageFile(input.name)) return true;
+    if (input.url?.startsWith('data:image/')) return true;
+    return false;
+  }
   const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-  return imageExts.includes(getFileExtension(filename));
+  return imageExts.includes(getFileExtension(input));
 }
 
 /**
- * Check if a file is a video
- * @param {string} filename
+ * Check if a file or asset is a video
+ * @param {string|object} input
  * @returns {boolean}
  */
-export function isVideoFile(filename) {
+export function isVideoFile(input) {
+  if (!input) return false;
+  if (typeof input === 'object') {
+    if (input.type?.startsWith('video/')) return true;
+    if (input.name && isVideoFile(input.name)) return true;
+    if (input.url?.startsWith('data:video/')) return true;
+    return false;
+  }
   const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi'];
-  return videoExts.includes(getFileExtension(filename));
+  return videoExts.includes(getFileExtension(input));
 }
 
 /**
- * Check if a file is a PDF
- * @param {string} filename
+ * Check if a file or asset is a PDF
+ * @param {string|object} input
  * @returns {boolean}
  */
-export function isPdfFile(filename) {
-  return getFileExtension(filename) === 'pdf';
+export function isPdfFile(input) {
+  if (!input) return false;
+  if (typeof input === 'object') {
+    if (input.type?.includes('pdf') || input.type === 'application/pdf') return true;
+    if (input.name && isPdfFile(input.name)) return true;
+    if (typeof input.url === 'string' && (input.url.startsWith('data:application/pdf') || input.url.toLowerCase().includes('.pdf'))) return true;
+    return false;
+  }
+  if (typeof input === 'string') {
+    if (input.startsWith('data:application/pdf')) return true;
+    if (input.toLowerCase().includes('.pdf')) return true;
+    return getFileExtension(input) === 'pdf';
+  }
+  return false;
+}
+
+/**
+ * Convert base64 data URL to a native Blob
+ * @param {string} dataUrl
+ * @param {string} forcedMime
+ * @returns {Blob|null}
+ */
+export function dataUrlToBlob(dataUrl, forcedMime = null) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+  try {
+    const parts = dataUrl.split(',');
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    let mime = forcedMime || (mimeMatch ? mimeMatch[1] : 'application/pdf');
+    if ((mime === 'application/octet-stream' || mime === 'text/plain') && forcedMime) {
+      mime = forcedMime;
+    }
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (e) {
+    console.error('Failed to convert data URL to Blob:', e);
+    return null;
+  }
 }
 
 /**
@@ -205,6 +259,80 @@ export function debounce(fn, delay) {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), delay);
   };
+}
+
+/**
+ * Validate and sanitize URL (enforces http/https/mailto protocols, rejects javascript:/data:/vbscript:)
+ * @param {string} urlStr
+ * @returns {string|null}
+ */
+export function sanitizeUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return null;
+  const trimmed = urlStr.trim();
+  if (!trimmed) return null;
+
+  // Auto-prefix protocol if missing
+  let candidate = trimmed;
+  if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(candidate)) {
+    candidate = 'https://' + candidate;
+  }
+
+  try {
+    const parsed = new URL(candidate);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === 'http:' || protocol === 'https:' || protocol === 'mailto:') {
+      return parsed.href;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Sanitize rich HTML to prevent Cross-Site Scripting (XSS)
+ * Strips script tags, unsafe iframe/objects, and inline on* event attributes.
+ * @param {string} dirtyHtml
+ * @returns {string}
+ */
+export function sanitizeHtml(dirtyHtml) {
+  if (!dirtyHtml || typeof dirtyHtml !== 'string') return '';
+
+  // Remove dangerous tags and their content
+  let clean = dirtyHtml
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+    .replace(/<embed\b[^>]*>/gi, '')
+    .replace(/<applet\b[^>]*>/gi, '')
+    .replace(/<meta\b[^>]*>/gi, '')
+    .replace(/<link\b[^>]*>/gi, '');
+
+  // Strip all inline event handlers (e.g. onload, onerror, onclick)
+  clean = clean.replace(/\s+on[a-zA-Z]+\s*=\s*(['"]).*?\1/gi, '');
+  clean = clean.replace(/\s+on[a-zA-Z]+\s*=\s*[^ >]+/gi, '');
+
+  // Neutralize javascript: pseudo-protocol in attributes
+  clean = clean.replace(/href\s*=\s*(['"])\s*javascript:[^'"]*\1/gi, 'href="#"');
+  clean = clean.replace(/src\s*=\s*(['"])\s*javascript:[^'"]*\1/gi, 'src=""');
+
+  return clean;
+}
+
+/**
+ * Safely parse JSON without throwing exceptions
+ * @param {string} jsonStr
+ * @param {*} fallback
+ * @returns {*}
+ */
+export function safeJsonParse(jsonStr, fallback = null) {
+  if (!jsonStr || typeof jsonStr !== 'string') return fallback;
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    return fallback;
+  }
 }
 
 /**

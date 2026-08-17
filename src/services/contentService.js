@@ -106,7 +106,7 @@ export async function deleteContent(id) {
  * @param {number} month
  * @returns {Promise<boolean>}
  */
-export async function createMonth(year, month) {
+export async function createMonth(_year, _month) {
   // Just return true because the database queries dynamically.
   return true;
 }
@@ -115,7 +115,7 @@ function fileToDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('Failed to read file. Please ensure file is not corrupted.'));
     reader.readAsDataURL(file);
   });
 }
@@ -126,12 +126,32 @@ function fileToDataURL(file) {
  * @returns {Promise<object>}
  */
 export async function uploadAsset(file) {
+  if (!file) throw new Error('No file provided');
+  // 50MB maximum upload limit for browser safety
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('File size exceeds the 50MB limit. Please upload a smaller file.');
+  }
   try {
     const dataUrl = await fileToDataURL(file);
+    let resolvedType = file.type;
+    if (!resolvedType) {
+      if (file.name.toLowerCase().endsWith('.pdf')) {
+        resolvedType = 'application/pdf';
+      } else if (file.name.toLowerCase().match(/\.(jpg|jpeg)$/)) {
+        resolvedType = 'image/jpeg';
+      } else if (file.name.toLowerCase().endsWith('.png')) {
+        resolvedType = 'image/png';
+      } else if (file.name.toLowerCase().endsWith('.webp')) {
+        resolvedType = 'image/webp';
+      } else {
+        resolvedType = 'application/octet-stream';
+      }
+    }
     return {
       id: 'a' + Math.random().toString(36).substr(2, 9),
       name: file.name,
-      type: file.type,
+      type: resolvedType,
       size: file.size,
       url: dataUrl,
       uploadedAt: new Date().toISOString(),
@@ -150,7 +170,7 @@ export async function uploadAsset(file) {
 export function downloadAsset(url, filename) {
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = filename || 'download';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -161,15 +181,16 @@ export function downloadAsset(url, filename) {
  * @param {string} prompt
  * @param {number} year
  * @param {number} month
+ * @param {string} category - 'social' | 'written'
  * @returns {Promise<Array>}
  */
-export async function generateAIContent(prompt, year, month) {
+export async function generateAIContent(prompt, year, month, category = 'social') {
   const response = await fetch('/api/generate-ai', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt, year, month }),
+    body: JSON.stringify({ prompt, year, month, category }),
   });
   if (!response.ok) {
     const errorData = await response.json();
@@ -213,16 +234,31 @@ export async function resetData() {
  * Fetch month notes
  * @param {number} year
  * @param {number} month
+ * @param {string} category - 'social' | 'written'
  * @returns {Promise<object>}
  */
-export async function fetchNotesByMonth(year, month) {
-  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-  const response = await fetch(`/api/notes?month=${monthKey}`);
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to fetch notes');
+export async function fetchNotesByMonth(year, month, category = 'social') {
+  const baseKey = `${year}-${String(month).padStart(2, '0')}`;
+  const monthKey = category === 'written' ? `${baseKey}-written` : `${baseKey}-social`;
+  
+  try {
+    let response = await fetch(`/api/notes?month=${monthKey}`);
+    if (response.ok) {
+      const data = await response.json();
+      // For social category, fallback to legacy baseKey if social key has no data
+      if (category === 'social' && (!data.notes || data.notes === '')) {
+        const fallbackRes = await fetch(`/api/notes?month=${baseKey}`);
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          if (fallbackData.notes) return fallbackData;
+        }
+      }
+      return data;
+    }
+  } catch (e) {
+    console.error('Error fetching notes:', e);
   }
-  return response.json();
+  return { month_key: monthKey, notes: '' };
 }
 
 /**
@@ -230,10 +266,12 @@ export async function fetchNotesByMonth(year, month) {
  * @param {number} year
  * @param {number} month
  * @param {string} notes
+ * @param {string} category - 'social' | 'written'
  * @returns {Promise<object>}
  */
-export async function saveNotesByMonth(year, month, notes) {
-  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+export async function saveNotesByMonth(year, month, notes, category = 'social') {
+  const baseKey = `${year}-${String(month).padStart(2, '0')}`;
+  const monthKey = category === 'written' ? `${baseKey}-written` : `${baseKey}-social`;
   const response = await fetch('/api/notes', {
     method: 'POST',
     headers: {

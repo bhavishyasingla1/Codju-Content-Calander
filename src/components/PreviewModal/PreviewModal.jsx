@@ -1,14 +1,80 @@
-import { useEffect, useCallback, useState } from 'react';
-import { isImageFile, isVideoFile, isPdfFile, stripHtml } from '../../utils/helpers';
+import { useEffect, useCallback, useState, useRef } from 'react';
+import { isImageFile, isVideoFile, isPdfFile, stripHtml, dataUrlToBlob, sanitizeHtml } from '../../utils/helpers';
 import { downloadAsset } from '../../services/contentService';
 import './PreviewModal.css';
 
-export default function PreviewModal({ asset, richText, caption, onClose }) {
+export default function PreviewModal({
+  asset,
+  assets = [],
+  initialIndex = 0,
+  richText,
+  caption,
+  onClose,
+}) {
+  // Normalize assets array
+  const assetList = assets.length > 0 ? assets : (asset ? [asset] : []);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (initialIndex >= 0 && initialIndex < assetList.length) {
+      return initialIndex;
+    }
+    return 0;
+  });
   const [copied, setCopied] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
 
+  // Swipe & Touch gesture handling
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+
+  const currentAsset = assetList[currentIndex] || asset || null;
+  const totalAssets = assetList.length;
+
+  // Convert Data URL to Blob URL for PDF to avoid browser sandbox iframe blocks
+  useEffect(() => {
+    if (!currentAsset?.url) {
+      setPdfBlobUrl(null);
+      return;
+    }
+    if (isPdfFile(currentAsset)) {
+      if (currentAsset.url.startsWith('data:')) {
+        const blob = dataUrlToBlob(currentAsset.url, 'application/pdf');
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          setPdfBlobUrl(url);
+          return () => {
+            URL.revokeObjectURL(url);
+          };
+        }
+      } else if (currentAsset.url.startsWith('blob:')) {
+        setPdfBlobUrl(currentAsset.url);
+      } else {
+        setPdfBlobUrl(currentAsset.url);
+      }
+    } else {
+      setPdfBlobUrl(null);
+    }
+  }, [currentAsset]);
+
+  const handlePrev = useCallback((e) => {
+    e?.stopPropagation();
+    setCurrentIndex(prev => (prev > 0 ? prev - 1 : totalAssets - 1));
+  }, [totalAssets]);
+
+  const handleNext = useCallback((e) => {
+    e?.stopPropagation();
+    setCurrentIndex(prev => (prev < totalAssets - 1 ? prev + 1 : 0));
+  }, [totalAssets]);
+
+  // Keyboard navigation
   const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Escape') onClose();
-  }, [onClose]);
+    if (e.key === 'Escape') {
+      onClose();
+    } else if (e.key === 'ArrowLeft' && totalAssets > 1) {
+      handlePrev();
+    } else if (e.key === 'ArrowRight' && totalAssets > 1) {
+      handleNext();
+    }
+  }, [onClose, totalAssets, handlePrev, handleNext]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -23,6 +89,28 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
     if (e.target === e.currentTarget) onClose();
   };
 
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0 && totalAssets > 1) {
+        handleNext();
+      } else if (diff < 0 && totalAssets > 1) {
+        handlePrev();
+      }
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   const handleCopy = () => {
     let textToCopy = '';
     if (richText) {
@@ -30,7 +118,7 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
     } else if (caption) {
       textToCopy = caption;
     }
-    
+
     if (textToCopy) {
       navigator.clipboard.writeText(textToCopy);
       setCopied(true);
@@ -39,83 +127,111 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
   };
 
   const handleDownload = () => {
-    if (asset?.url) {
-      downloadAsset(asset.url, asset.name || 'download');
+    if (currentAsset?.url) {
+      const ext = isPdfFile(currentAsset) ? '.pdf' : '';
+      const fallbackName = `asset_${currentIndex + 1}${ext}`;
+      downloadAsset(pdfBlobUrl || currentAsset.url, currentAsset.name || fallbackName);
     }
   };
 
-  const renderContent = () => {
-    // Rich text preview
+  const renderMedia = () => {
+    // Rich text article preview
     if (richText) {
       return (
         <div className="preview-modal__text">
-          <div className="preview-modal__text-content" dangerouslySetInnerHTML={{ __html: richText }} />
+          <div className="preview-modal__text-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(richText) }} />
         </div>
       );
     }
 
-    if (!asset) return null;
+    if (!currentAsset) return null;
 
     // Image preview
-    if (isImageFile(asset.name)) {
+    if (isImageFile(currentAsset)) {
       return (
-        <div className="preview-modal__image-wrap">
-          <img src={asset.url} alt={asset.name} className="preview-modal__image" />
+        <div
+          className="preview-modal__image-wrap"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <img
+            src={currentAsset.url}
+            alt={currentAsset.name || `Slide ${currentIndex + 1}`}
+            className="preview-modal__image"
+          />
         </div>
       );
     }
 
     // Video preview
-    if (isVideoFile(asset.name)) {
+    if (isVideoFile(currentAsset)) {
       return (
         <div className="preview-modal__video-wrap">
-          <video src={asset.url} controls className="preview-modal__video" autoPlay>
+          <video src={currentAsset.url} controls className="preview-modal__video" autoPlay>
             Your browser does not support video playback.
           </video>
         </div>
       );
     }
 
-    // PDF preview
-    if (isPdfFile(asset.name)) {
+    // Full PDF preview with standard iframe and fallback button
+    if (isPdfFile(currentAsset)) {
+      const pdfSource = pdfBlobUrl || currentAsset.url;
       return (
         <div className="preview-modal__pdf-wrap">
-          <iframe src={asset.url} className="preview-modal__pdf" title={asset.name} />
+          <iframe
+            src={`${pdfSource}#toolbar=1&navpanes=1`}
+            className="preview-modal__pdf"
+            title={currentAsset.name || 'PDF Document Preview'}
+          />
         </div>
       );
     }
 
-    // Generic file
+    // Generic file fallback
     return (
       <div className="preview-modal__generic">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
           <polyline points="13,2 13,9 20,9" />
         </svg>
-        <p>{asset.name}</p>
+        <p>{currentAsset.name || 'Document File'}</p>
       </div>
     );
   };
 
-  const hasCopyableText = !!richText || !!caption;
+  const hasCopyableText = !!richText;
+  const isPdf = currentAsset && isPdfFile(currentAsset);
 
   return (
     <div className="preview-modal__backdrop" onClick={handleBackdropClick}>
-      <div className="preview-modal animate-scale-in">
+      <div className={`preview-modal animate-scale-in ${isPdf ? 'preview-modal--pdf-mode' : ''}`}>
         <div className="preview-modal__header">
           <div className="preview-modal__header-left">
             <span className="preview-modal__name">
-              {richText ? 'Text Preview' : (asset?.name || 'Preview')}
+              {richText
+                ? 'Text Preview'
+                : totalAssets > 1
+                ? `${currentAsset?.name || 'Image'} (${currentIndex + 1} of ${totalAssets})`
+                : (currentAsset?.name || 'Preview')}
             </span>
           </div>
 
           <div className="preview-modal__actions">
+            {/* Slide counter indicator */}
+            {totalAssets > 1 && (
+              <span className="preview-modal__counter-badge">
+                {currentIndex + 1} / {totalAssets}
+              </span>
+            )}
+
             {/* Copy Text Button */}
             {hasCopyableText && (
               <button
                 className={`preview-modal__action-btn ${copied ? 'preview-modal__action-btn--success' : ''}`}
                 onClick={handleCopy}
-                title="Copy Caption Text"
+                title="Copy Article Text"
                 type="button"
               >
                 {copied ? (
@@ -137,12 +253,30 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
               </button>
             )}
 
-            {/* Download HD Button */}
-            {asset && (
+            {/* Open in New Tab for PDF */}
+            {isPdf && (pdfBlobUrl || currentAsset?.url) && (
+              <a
+                href={pdfBlobUrl || currentAsset.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="preview-modal__action-btn"
+                title="Open PDF in a new tab"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                <span>Open Tab</span>
+              </a>
+            )}
+
+            {/* Download HD / PDF Button */}
+            {currentAsset && (
               <button
                 className="preview-modal__action-btn preview-modal__action-btn--primary"
                 onClick={handleDownload}
-                title="Download HD Quality File"
+                title={isPdf ? 'Download PDF Document' : 'Download HD Image'}
                 type="button"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -150,7 +284,7 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                <span>Download HD</span>
+                <span>{isPdf ? 'Download PDF' : 'Download HD'}</span>
               </button>
             )}
 
@@ -162,16 +296,59 @@ export default function PreviewModal({ asset, richText, caption, onClose }) {
             </button>
           </div>
         </div>
+
         <div className="preview-modal__body">
-          {renderContent()}
-          {/* Display caption block if present beneath the preview asset */}
-          {caption && !richText && (
-            <div className="preview-modal__caption-box">
-              <h4 className="preview-modal__caption-title">Caption</h4>
-              <p className="preview-modal__caption-text">{caption}</p>
-            </div>
+          {/* Previous Arrow button */}
+          {totalAssets > 1 && (
+            <button
+              className="preview-modal__nav-btn preview-modal__nav-btn--prev"
+              onClick={handlePrev}
+              title="Previous Image (Left Arrow)"
+              type="button"
+              aria-label="Previous image"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+          )}
+
+          {/* Main Media Preview */}
+          <div className="preview-modal__media-container">
+            {renderMedia()}
+          </div>
+
+          {/* Next Arrow button */}
+          {totalAssets > 1 && (
+            <button
+              className="preview-modal__nav-btn preview-modal__nav-btn--next"
+              onClick={handleNext}
+              title="Next Image (Right Arrow)"
+              type="button"
+              aria-label="Next image"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
           )}
         </div>
+
+        {/* Carousel Navigation Dots */}
+        {totalAssets > 1 && (
+          <div className="preview-modal__dots">
+            {assetList.map((item, idx) => (
+              <button
+                key={item.id || idx}
+                className={`preview-modal__dot ${idx === currentIndex ? 'preview-modal__dot--active' : ''}`}
+                onClick={() => setCurrentIndex(idx)}
+                title={`Go to slide ${idx + 1}`}
+                type="button"
+                aria-label={`Slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

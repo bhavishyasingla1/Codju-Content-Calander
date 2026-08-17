@@ -32,39 +32,79 @@
 
 /* Draft */
 .status-badge--draft {
-  background: var(--color-status-draft-bg);
+  background: var(--color-bg-hover);
   color: #6B7280;
+  border: 1px solid var(--color-border);
 }
 
 .status-badge--draft .status-badge__dot {
-  background: var(--color-status-draft);
+  background: #9CA3AF;
 }
 
-/* Ready */
+/* In Review / Pending */
+.status-badge--pending {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.status-badge--pending .status-badge__dot {
+  background: #F59E0B;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* Needs Changes / Revision */
+.status-badge--revision {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+  animation: pulse-revision 2s infinite;
+}
+
+.status-badge--revision .status-badge__dot {
+  background: #DC2626;
+}
+
+@keyframes pulse-revision {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* Ready / Approved */
 .status-badge--ready {
-  background: var(--color-status-ready-bg);
-  color: #C2410C;
+  background: var(--color-accent-green-pale);
+  color: var(--color-accent-green-dark);
+  border: 1px solid #86EFAC;
 }
 
 .status-badge--ready .status-badge__dot {
-  background: var(--color-status-ready);
+  background: var(--color-accent-green);
 }
 
 /* Published */
 .status-badge--published {
-  background: var(--color-status-published-bg);
-  color: #15803D;
+  background: #EEF2FF;
+  color: #4F46E5;
+  border: 1px solid #C7D2FE;
 }
 
 .status-badge--published .status-badge__dot {
-  background: var(--color-status-published);
+  background: #6366F1;
 }
 
-/* Sizes */
+.status-badge--disabled {
+  cursor: default;
+}
+
+.status-badge--disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Small size */
 .status-badge--small {
   padding: 2px 8px;
-  font-size: 0.6875rem;
-  gap: 4px;
+  font-size: 10px;
 }
 
 .status-badge--small .status-badge__dot {

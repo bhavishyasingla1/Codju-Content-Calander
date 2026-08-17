@@ -51,7 +51,11 @@ export default function RichTextEditor({ value = '', onChange, placeholder = 'St
       className="rte__tool-btn"
       onMouseDown={(e) => {
         e.preventDefault();
-        onClick ? onClick() : execCommand(command);
+        if (onClick) {
+          onClick();
+        } else {
+          execCommand(command);
+        }
       }}
       title={title}
       type="button"

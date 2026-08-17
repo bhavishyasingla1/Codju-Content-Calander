@@ -29,6 +29,7 @@ export function mapToFrontend(row) {
     date: row.date,
     name: row.name,
     type: row.type,
+    category: row.category || 'social',
     summary: row.summary || '',
     caption: row.caption || '',
     platform: row.platform || 'instagram',
@@ -38,6 +39,9 @@ export function mapToFrontend(row) {
     script: row.script || '',
     thumbnailAsset: row.thumbnail_asset || null,
     pdfAsset: row.pdf_asset || null,
+    feedback: row.feedback || '',
+    feedbackAssets: row.feedback_assets || [],
+    reviewedAt: row.reviewed_at || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

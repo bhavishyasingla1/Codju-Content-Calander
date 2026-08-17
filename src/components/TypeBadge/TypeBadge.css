@@ -39,6 +39,24 @@
   color: var(--color-type-text);
 }
 
+/* Blog */
+.type-badge--blog {
+  background: var(--color-type-blog-bg);
+  color: var(--color-type-blog);
+}
+
+/* Newsletter */
+.type-badge--newsletter {
+  background: var(--color-type-newsletter-bg);
+  color: var(--color-type-newsletter);
+}
+
+/* Case Study */
+.type-badge--case-study {
+  background: var(--color-type-casestudy-bg);
+  color: var(--color-type-casestudy);
+}
+
 /* Small */
 .type-badge--small {
   padding: 2px 7px;

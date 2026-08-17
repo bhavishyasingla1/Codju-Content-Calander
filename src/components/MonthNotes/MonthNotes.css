@@ -1,14 +1,13 @@
 .month-notes-card {
-  margin-top: 24px;
+  margin-top: 28px;
   background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-xl);
+  border: 1.5px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  backdrop-filter: blur(10px);
+  gap: 20px;
 }
 
 .month-notes-card__header {
@@ -16,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1.5px solid var(--color-border);
-  padding-bottom: 12px;
+  padding-bottom: 14px;
 }
 
 .month-notes-card__title-group {
@@ -26,68 +25,311 @@
 }
 
 .month-notes-card__icon {
-  color: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .month-notes-card__title {
   font-family: var(--font-heading);
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--color-text);
   margin: 0;
 }
 
 .month-notes-card__save-status {
   font-size: var(--text-xs);
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
   transition: all var(--transition-fast);
 }
 
 .month-notes-card__save-status--saving {
-  background: rgba(108, 92, 231, 0.1);
-  color: var(--color-primary-light);
+  background: var(--color-primary-pale);
+  color: var(--color-primary);
 }
 
 .month-notes-card__save-status--saved {
-  background: rgba(46, 213, 115, 0.1);
-  color: #2ed573;
+  background: var(--color-accent-green-pale);
+  color: var(--color-accent-green-dark);
 }
 
 .month-notes-card__save-status--error {
-  background: rgba(255, 71, 87, 0.1);
-  color: #ff4757;
+  background: #FEE2E2;
+  color: #DC2626;
 }
 
 .month-notes-card__body {
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
+/* Subsections */
+.month-notes__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.month-notes__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month-notes__section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+.month-notes__section-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.month-notes__count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--color-bg-hover);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.month-notes__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-ghost);
+  border: 1px solid var(--color-primary-light);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.month-notes__add-btn:hover {
+  background: var(--color-primary-pale);
+  border-color: var(--color-primary);
+}
+
+/* Links Grid */
+.month-notes__links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+/* Link Card */
+.month-notes__link-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all var(--transition-fast);
+}
+
+.month-notes__link-card:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-hover);
+}
+
+.month-notes__link-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.month-notes__link-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.month-notes__link-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  max-width: 100%;
+}
+
+.month-notes__link-url span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.month-notes__link-url:hover {
+  text-decoration: underline;
+}
+
+.month-notes__link-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.month-notes__link-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.month-notes__link-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.month-notes__link-btn--delete:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+/* Add Link Inline Form */
+.month-notes__add-link-form {
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-primary-light);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.month-notes__form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .month-notes__form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.month-notes__form-input {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-family: inherit;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.month-notes__form-input:focus {
+  border-color: var(--color-primary);
+}
+
+.month-notes__form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.month-notes__form-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+}
+
+.month-notes__form-btn--cancel {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.month-notes__form-btn--cancel:hover {
+  color: var(--color-text);
+}
+
+.month-notes__form-btn--submit {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.month-notes__form-btn--submit:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.month-notes__form-btn--submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dedicated Textarea */
 .month-notes-card__textarea {
   width: 100%;
-  padding: 12px;
-  border-radius: var(--radius-md);
+  padding: 14px;
+  border-radius: var(--radius-lg);
   border: 1.5px solid var(--color-border);
   background: var(--color-bg);
-  color: var(--color-text-primary);
+  color: var(--color-text);
   font-family: inherit;
   font-size: var(--text-xs);
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
   resize: vertical;
   transition: all var(--transition-fast);
+  min-height: 120px;
 }
 
 .month-notes-card__textarea:focus {
   outline: none;
-  border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+  border-color: var(--color-primary);
+  background: var(--color-bg-elevated);
+  box-shadow: 0 0 0 3px var(--color-primary-ghost);
 }
 
 .month-notes-card__loading {
   height: 120px;
   background: var(--color-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 1.5px solid var(--color-border);
   overflow: hidden;
   position: relative;
@@ -99,7 +341,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.08),
     transparent
   );
   background-size: 200% 100%;
@@ -112,14 +354,14 @@
 }
 
 .month-notes-card__error {
-  height: 120px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 71, 87, 0.05);
-  border: 1.5px solid rgba(255, 71, 87, 0.2);
-  border-radius: var(--radius-md);
-  color: #ff4757;
+  background: #FEE2E2;
+  border: 1.5px solid #FCA5A5;
+  border-radius: var(--radius-lg);
+  color: #DC2626;
   font-size: var(--text-xs);
-  font-weight: 500;
+  font-weight: 600;
 }

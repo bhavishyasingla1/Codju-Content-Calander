@@ -30,6 +30,7 @@ export default async function handler(req, res) {
         date: 'date',
         name: 'name',
         type: 'type',
+        category: 'category',
         summary: 'summary',
         caption: 'caption',
         platform: 'platform',
@@ -39,12 +40,15 @@ export default async function handler(req, res) {
         script: 'script',
         thumbnailAsset: 'thumbnail_asset',
         pdfAsset: 'pdf_asset',
+        feedback: 'feedback',
+        feedbackAssets: 'feedback_assets',
+        reviewedAt: 'reviewed_at',
       };
 
       for (const [key, dbField] of Object.entries(fieldsMap)) {
         if (body[key] !== undefined) {
           updates.push(`${dbField} = $${paramIndex}`);
-          if (key === 'assets' || key === 'thumbnailAsset' || key === 'pdfAsset') {
+          if (key === 'assets' || key === 'thumbnailAsset' || key === 'pdfAsset' || key === 'feedbackAssets') {
             params.push(JSON.stringify(body[key]));
           } else {
             params.push(body[key]);

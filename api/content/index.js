@@ -38,8 +38,8 @@ export default async function handler(req, res) {
       const now = new Date().toISOString();
 
       const queryText = `
-        INSERT INTO content (id, date, name, type, summary, caption, platform, status, assets, rich_text, script, thumbnail_asset, pdf_asset, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        INSERT INTO content (id, date, name, type, category, summary, caption, platform, status, assets, rich_text, script, thumbnail_asset, pdf_asset, feedback, feedback_assets, reviewed_at, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         RETURNING *
       `;
 
@@ -47,22 +47,26 @@ export default async function handler(req, res) {
         body.id || ('c' + Math.random().toString(36).substr(2, 9)),
         body.date || now.split('T')[0],
         body.name || 'Untitled Content',
-        body.type || 'static',
+        body.type || (body.category === 'written' ? 'blog' : 'static'),
+        body.category || 'social',
         body.summary || '',
         body.caption || '',
-        body.platform || 'instagram',
+        body.platform || (body.category === 'written' ? 'website' : 'instagram'),
         body.status || 'draft',
         JSON.stringify(body.assets || []),
         body.richText || '',
         body.script || '',
         JSON.stringify(body.thumbnailAsset || null),
         JSON.stringify(body.pdfAsset || null),
+        body.feedback || '',
+        JSON.stringify(body.feedbackAssets || []),
+        body.reviewedAt || null,
         now,
         now
       ];
 
       const result = await pool.query(queryText, params);
-      return res.status(200).json(mapToFrontend(result.rows[0]));
+      return res.status(201).json(mapToFrontend(result.rows[0]));
     } catch (err) {
       console.error('Error creating content:', err);
       return res.status(500).json({ error: err.message });

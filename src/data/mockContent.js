@@ -170,28 +170,50 @@ const MOCK_CONTENT = {
 
 // Platform options
 export const PLATFORMS = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'twitter', label: 'Twitter/X' },
-  { value: 'threads', label: 'Threads' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'tiktok', label: 'TikTok' },
+  // Social platforms
+  { value: 'instagram', label: 'Instagram', category: 'social' },
+  { value: 'linkedin', label: 'LinkedIn', category: 'all' },
+  { value: 'twitter', label: 'Twitter/X', category: 'social' },
+  { value: 'threads', label: 'Threads', category: 'social' },
+  { value: 'youtube', label: 'YouTube', category: 'social' },
+  { value: 'tiktok', label: 'TikTok', category: 'social' },
+  { value: 'facebook', label: 'Facebook', category: 'social' },
+  // Written content platforms
+  { value: 'website', label: 'Website Blog', category: 'written' },
+  { value: 'medium', label: 'Medium', category: 'written' },
+  { value: 'substack', label: 'Substack', category: 'written' },
+  { value: 'newsletter', label: 'Email Newsletter', category: 'written' },
+  { value: 'devto', label: 'Dev.to / Hashnode', category: 'written' },
 ];
 
 // Content type definitions
 export const CONTENT_TYPES = [
-  { value: 'static', label: 'Static', color: 'var(--color-type-static)', bg: 'var(--color-type-static-bg)' },
-  { value: 'carousel', label: 'Carousel', color: 'var(--color-type-carousel)', bg: 'var(--color-type-carousel-bg)' },
-  { value: 'reel', label: 'Reel', color: 'var(--color-type-reel)', bg: 'var(--color-type-reel-bg)' },
-  { value: 'text', label: 'Text Only', color: 'var(--color-type-text)', bg: 'var(--color-type-text-bg)' },
+  // Social types
+  { value: 'static', label: 'Static Post', color: 'var(--color-type-static)', bg: 'var(--color-type-static-bg)', category: 'social' },
+  { value: 'carousel', label: 'Carousel', color: 'var(--color-type-carousel)', bg: 'var(--color-type-carousel-bg)', category: 'social' },
+  { value: 'reel', label: 'Reel / Video', color: 'var(--color-type-reel)', bg: 'var(--color-type-reel-bg)', category: 'social' },
+  { value: 'text', label: 'Text / Thought', color: 'var(--color-type-text)', bg: 'var(--color-type-text-bg)', category: 'all' },
+  // Written content types
+  { value: 'blog', label: 'Blog Article', color: 'var(--color-type-blog)', bg: 'var(--color-type-blog-bg)', category: 'written' },
+  { value: 'newsletter', label: 'Newsletter', color: 'var(--color-type-newsletter)', bg: 'var(--color-type-newsletter-bg)', category: 'written' },
+  { value: 'case-study', label: 'Case Study', color: 'var(--color-type-casestudy)', bg: 'var(--color-type-casestudy-bg)', category: 'written' },
 ];
 
 // Status definitions
 export const STATUSES = [
   { value: 'draft', label: 'Draft', color: 'var(--color-status-draft)', bg: 'var(--color-status-draft-bg)' },
-  { value: 'ready', label: 'Ready', color: 'var(--color-status-ready)', bg: 'var(--color-status-ready-bg)' },
+  { value: 'pending', label: 'In Review', color: '#D97706', bg: '#FEF3C7' },
+  { value: 'revision', label: 'Needs Changes', color: '#DC2626', bg: '#FEE2E2' },
+  { value: 'ready', label: 'Approved', color: 'var(--color-status-ready)', bg: 'var(--color-status-ready-bg)' },
   { value: 'published', label: 'Published', color: 'var(--color-status-published)', bg: 'var(--color-status-published-bg)' },
 ];
+
+export function getTypesByCategory(category = 'social') {
+  return CONTENT_TYPES.filter(t => t.category === category || t.category === 'all');
+}
+
+export function getPlatformsByCategory(category = 'social') {
+  return PLATFORMS.filter(p => p.category === category || p.category === 'all');
+}
 
 export default MOCK_CONTENT;
