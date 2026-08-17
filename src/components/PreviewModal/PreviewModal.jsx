@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { isImageFile, isVideoFile, isPdfFile, stripHtml, dataUrlToBlob, sanitizeHtml } from '../../utils/helpers';
 import { downloadAsset } from '../../services/contentService';
+import PdfViewer from '../PdfViewer/PdfViewer';
 import './PreviewModal.css';
 
 export default function PreviewModal({
@@ -20,7 +21,6 @@ export default function PreviewModal({
     return 0;
   });
   const [copied, setCopied] = useState(false);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
 
   // Swipe & Touch gesture handling
   const touchStartX = useRef(null);
@@ -28,32 +28,6 @@ export default function PreviewModal({
 
   const currentAsset = assetList[currentIndex] || asset || null;
   const totalAssets = assetList.length;
-
-  // Convert Data URL to Blob URL for PDF to avoid browser sandbox iframe blocks
-  useEffect(() => {
-    if (!currentAsset?.url) {
-      setPdfBlobUrl(null);
-      return;
-    }
-    if (isPdfFile(currentAsset)) {
-      if (currentAsset.url.startsWith('data:')) {
-        const blob = dataUrlToBlob(currentAsset.url, 'application/pdf');
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          setPdfBlobUrl(url);
-          return () => {
-            URL.revokeObjectURL(url);
-          };
-        }
-      } else if (currentAsset.url.startsWith('blob:')) {
-        setPdfBlobUrl(currentAsset.url);
-      } else {
-        setPdfBlobUrl(currentAsset.url);
-      }
-    } else {
-      setPdfBlobUrl(null);
-    }
-  }, [currentAsset]);
 
   const handlePrev = useCallback((e) => {
     e?.stopPropagation();
@@ -130,8 +104,27 @@ export default function PreviewModal({
     if (currentAsset?.url) {
       const ext = isPdfFile(currentAsset) ? '.pdf' : '';
       const fallbackName = `asset_${currentIndex + 1}${ext}`;
-      downloadAsset(pdfBlobUrl || currentAsset.url, currentAsset.name || fallbackName);
+      downloadAsset(currentAsset.url, currentAsset.name || fallbackName);
     }
+  };
+
+  const handleOpenNewTab = () => {
+    if (!currentAsset?.url) return;
+    if (currentAsset.url.startsWith('http') || currentAsset.url.startsWith('blob:')) {
+      window.open(currentAsset.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (currentAsset.url.startsWith('data:')) {
+      const isPdf = isPdfFile(currentAsset);
+      const blob = dataUrlToBlob(currentAsset.url, isPdf ? 'application/pdf' : null);
+      if (blob) {
+        const tabUrl = URL.createObjectURL(blob);
+        window.open(tabUrl, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(tabUrl), 60000);
+        return;
+      }
+    }
+    window.open(currentAsset.url, '_blank');
   };
 
   const renderMedia = () => {
@@ -175,15 +168,15 @@ export default function PreviewModal({
       );
     }
 
-    // Full PDF preview with standard iframe and fallback button
+    // Interactive PDF viewer
     if (isPdfFile(currentAsset)) {
-      const pdfSource = pdfBlobUrl || currentAsset.url;
       return (
         <div className="preview-modal__pdf-wrap">
-          <iframe
-            src={`${pdfSource}#toolbar=1&navpanes=1`}
-            className="preview-modal__pdf"
-            title={currentAsset.name || 'PDF Document Preview'}
+          <PdfViewer
+            url={currentAsset.url}
+            fileName={currentAsset.name || 'document.pdf'}
+            onDownload={handleDownload}
+            onOpenNewTab={handleOpenNewTab}
           />
         </div>
       );
@@ -254,13 +247,12 @@ export default function PreviewModal({
             )}
 
             {/* Open in New Tab for PDF */}
-            {isPdf && (pdfBlobUrl || currentAsset?.url) && (
-              <a
-                href={pdfBlobUrl || currentAsset.url}
-                target="_blank"
-                rel="noopener noreferrer"
+            {isPdf && currentAsset?.url && (
+              <button
+                onClick={handleOpenNewTab}
                 className="preview-modal__action-btn"
                 title="Open PDF in a new tab"
+                type="button"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -268,7 +260,7 @@ export default function PreviewModal({
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
                 <span>Open Tab</span>
-              </a>
+              </button>
             )}
 
             {/* Download HD / PDF Button */}

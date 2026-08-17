@@ -2,6 +2,7 @@
 // Communicates with our Vite backend API connected to Supabase Postgres.
 
 import { PLATFORMS, CONTENT_TYPES, STATUSES } from '../data/mockContent';
+import { dataUrlToBlob } from '../utils/helpers';
 
 // Generate a random temporary ID for client-side items
 function generateId() {
@@ -168,12 +169,31 @@ export async function uploadAsset(file) {
  * @param {string} filename
  */
 export function downloadAsset(url, filename) {
+  if (!url) return;
+  let tempBlobUrl = null;
+  let targetUrl = url;
+
+  if (typeof url === 'string' && url.startsWith('data:')) {
+    const isPdf = filename?.toLowerCase().endsWith('.pdf') || url.startsWith('data:application/pdf');
+    const blob = dataUrlToBlob(url, isPdf ? 'application/pdf' : null);
+    if (blob) {
+      tempBlobUrl = URL.createObjectURL(blob);
+      targetUrl = tempBlobUrl;
+    }
+  }
+
   const a = document.createElement('a');
-  a.href = url;
+  a.href = targetUrl;
   a.download = filename || 'download';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+
+  if (tempBlobUrl) {
+    setTimeout(() => {
+      URL.revokeObjectURL(tempBlobUrl);
+    }, 10000);
+  }
 }
 
 /**

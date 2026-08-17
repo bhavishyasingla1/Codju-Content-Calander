@@ -207,26 +207,51 @@ export function isPdfFile(input) {
 }
 
 /**
+ * Convert base64 data URL to a Uint8Array
+ * @param {string} dataUrl
+ * @returns {Uint8Array|null}
+ */
+export function dataUrlToUint8Array(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  try {
+    const cleanUrl = dataUrl.split('#')[0].trim();
+    if (!cleanUrl.startsWith('data:')) return null;
+    const parts = cleanUrl.split(',');
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/[\r\n\s]/g, '');
+    const bstr = atob(base64);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return u8arr;
+  } catch (e) {
+    console.error('Failed to convert data URL to Uint8Array:', e);
+    return null;
+  }
+}
+
+/**
  * Convert base64 data URL to a native Blob
  * @param {string} dataUrl
  * @param {string} forcedMime
  * @returns {Blob|null}
  */
 export function dataUrlToBlob(dataUrl, forcedMime = null) {
-  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
   try {
-    const parts = dataUrl.split(',');
+    const cleanUrl = dataUrl.split('#')[0].trim();
+    if (!cleanUrl.startsWith('data:')) return null;
+    const parts = cleanUrl.split(',');
+    if (parts.length < 2) return null;
     const mimeMatch = parts[0].match(/:(.*?);/);
     let mime = forcedMime || (mimeMatch ? mimeMatch[1] : 'application/pdf');
     if ((mime === 'application/octet-stream' || mime === 'text/plain') && forcedMime) {
       mime = forcedMime;
     }
-    const bstr = atob(parts[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
+    const u8arr = dataUrlToUint8Array(cleanUrl);
+    if (!u8arr) return null;
     return new Blob([u8arr], { type: mime });
   } catch (e) {
     console.error('Failed to convert data URL to Blob:', e);
