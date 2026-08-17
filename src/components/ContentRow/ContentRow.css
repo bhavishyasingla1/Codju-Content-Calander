@@ -135,6 +135,13 @@
   box-shadow: 0 0 0 2px var(--color-primary-pale);
 }
 
+.content-row__select option {
+  background: #1E2030;
+  color: #F8FAFC;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
 /* Buttons */
 .content-row__btn-expand {
   display: inline-flex;
@@ -300,6 +307,33 @@
   background: #EEF2FF;
   color: #4F46E5;
   border: 1px solid #C7D2FE;
+}
+
+.content-row__quick-btn--send:hover {
+  background: #C7D2FE;
+  color: #3730A3;
+}
+
+.content-row__delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.content-row__delete-btn:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+  transform: scale(1.1);
 }
 
 .content-row__quick-btn--send:hover {

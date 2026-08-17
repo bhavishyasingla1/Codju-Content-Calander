@@ -67,10 +67,46 @@ function parseNotesPayload(raw) {
 
 export default function MonthNotes({ year, month, category = 'social' }) {
   const { isAdmin, openPinModal } = useAuth();
-  const [links, setLinks] = useState([]);
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(true);
+  const baseKey = `${year}-${String(month).padStart(2, '0')}`;
+  const monthKey = category === 'written' ? `${baseKey}-written` : `${baseKey}-social`;
+  const cacheKey = `codju_notes_cache_${monthKey}`;
+
+  // Instant SWR Cache
+  const [links, setLinks] = useState(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = parseNotesPayload(cached);
+        return parsed.links || [];
+      }
+    } catch {}
+    return [];
+  });
+
+  const [notes, setNotes] = useState(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = parseNotesPayload(cached);
+        return parsed.notes || '';
+      }
+    } catch {}
+    return '';
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) return false;
+    } catch {}
+    return true;
+  });
+
   const [error, setError] = useState(null);
+
+  // In-flight typing ref so background sync doesn't overwrite active typing
+  const isTypingRef = useRef(false);
+  const typingTimerRef = useRef(null);
 
   // New link form state
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -80,41 +116,94 @@ export default function MonthNotes({ year, month, category = 'social' }) {
 
   const titleInputRef = useRef(null);
 
-  // Fetch notes on month/year/category change
-  useEffect(() => {
-    let active = true;
-    async function loadNotes() {
+  // Helper to persist cache
+  const persistNotesCache = useCallback((rawNotes) => {
+    try {
+      localStorage.setItem(cacheKey, typeof rawNotes === 'string' ? rawNotes : JSON.stringify(rawNotes));
+    } catch {
+      // ignore
+    }
+  }, [cacheKey]);
+
+  // Load notes function (supports silent background revalidation)
+  const loadNotes = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
       setLoading(true);
       setError(null);
-      try {
-        const data = await fetchNotesByMonth(year, month, category);
-        if (active) {
-          const parsed = parseNotesPayload(data.notes || '');
-          setLinks(parsed.links);
-          setNotes(parsed.notes);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.message || 'Failed to load notes');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
     }
-    loadNotes();
-    return () => {
-      active = false;
+    try {
+      const data = await fetchNotesByMonth(year, month, category);
+      if (!isTypingRef.current) {
+        const parsed = parseNotesPayload(data.notes || '');
+        setLinks(parsed.links);
+        setNotes(parsed.notes);
+        persistNotesCache(data.notes || '');
+      }
+    } catch (err) {
+      if (!isSilent) {
+        setError(err.message || 'Failed to load notes');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [year, month, category, persistNotesCache]);
+
+  // Fetch notes on month/year/category change
+  useEffect(() => {
+    let hasCache = false;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        hasCache = true;
+        const parsed = parseNotesPayload(cached);
+        setLinks(parsed.links);
+        setNotes(parsed.notes);
+        setLoading(false);
+      }
+    } catch {}
+
+    if (!hasCache) {
+      setLinks([]);
+      setNotes('');
+      setLoading(true);
+    }
+
+    loadNotes(hasCache);
+  }, [year, month, category, cacheKey, loadNotes]);
+
+  // Multi-Device & Focus Sync for notes
+  useEffect(() => {
+    let isMounted = true;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isTypingRef.current && isMounted) {
+        loadNotes(true);
+      }
+    }, 4000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && !isTypingRef.current && isMounted) {
+        loadNotes(true);
+      }
     };
-  }, [year, month, category]);
+
+    document.addEventListener('visibilitychange', handleFocus);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadNotes]);
 
   // Save notes handler (serializes links + notes to JSON)
   const saveFunction = useCallback(async () => {
     if (!isAdmin) return;
     const payload = JSON.stringify({ links, notes });
+    persistNotesCache(payload);
     await saveNotesByMonth(year, month, payload, category);
-  }, [year, month, category, links, notes, isAdmin]);
+  }, [year, month, category, links, notes, isAdmin, persistNotesCache]);
 
   const { saveStatus, triggerSave } = useAutoSave(saveFunction, 2000);
 
@@ -123,6 +212,12 @@ export default function MonthNotes({ year, month, category = 'social' }) {
       openPinModal();
       return;
     }
+    isTypingRef.current = true;
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+    }, 3000);
+
     setNotes(e.target.value);
     triggerSave();
   };

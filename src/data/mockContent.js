@@ -186,17 +186,15 @@ export const PLATFORMS = [
   { value: 'devto', label: 'Dev.to / Hashnode', category: 'written' },
 ];
 
-// Content type definitions
+// Content type definitions (Carousel, Static Post, Text/Thought, Blog Article, Newsletter)
 export const CONTENT_TYPES = [
   // Social types
-  { value: 'static', label: 'Static Post', color: 'var(--color-type-static)', bg: 'var(--color-type-static-bg)', category: 'social' },
   { value: 'carousel', label: 'Carousel', color: 'var(--color-type-carousel)', bg: 'var(--color-type-carousel-bg)', category: 'social' },
-  { value: 'reel', label: 'Reel / Video', color: 'var(--color-type-reel)', bg: 'var(--color-type-reel-bg)', category: 'social' },
+  { value: 'static', label: 'Static Post', color: 'var(--color-type-static)', bg: 'var(--color-type-static-bg)', category: 'social' },
   { value: 'text', label: 'Text / Thought', color: 'var(--color-type-text)', bg: 'var(--color-type-text-bg)', category: 'all' },
   // Written content types
   { value: 'blog', label: 'Blog Article', color: 'var(--color-type-blog)', bg: 'var(--color-type-blog-bg)', category: 'written' },
   { value: 'newsletter', label: 'Newsletter', color: 'var(--color-type-newsletter)', bg: 'var(--color-type-newsletter-bg)', category: 'written' },
-  { value: 'case-study', label: 'Case Study', color: 'var(--color-type-casestudy)', bg: 'var(--color-type-casestudy-bg)', category: 'written' },
 ];
 
 // Status definitions

@@ -1,4 +1,4 @@
-import { pool } from './db.js';
+import { supabase } from './db.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -17,12 +17,28 @@ export default async function handler(req, res) {
     }
 
     try {
-      const queryText = 'SELECT * FROM month_notes WHERE month_key = $1';
-      const result = await pool.query(queryText, [monthQuery]);
-      if (result.rows.length === 0) {
+      let { data, error } = await supabase
+        .from('month_notes')
+        .select('*')
+        .eq('month_key', monthQuery)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data && monthQuery.length > 7) {
+        const baseMonth = monthQuery.substring(0, 7);
+        const resBase = await supabase
+          .from('month_notes')
+          .select('*')
+          .eq('month_key', baseMonth)
+          .maybeSingle();
+        data = resBase.data;
+      }
+
+      if (!data) {
         return res.status(200).json({ month_key: monthQuery, notes: '' });
       } else {
-        return res.status(200).json(result.rows[0]);
+        return res.status(200).json(data);
       }
     } catch (err) {
       console.error('Error fetching month notes:', err);
@@ -39,15 +55,17 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing month parameter' });
       }
 
-      const queryText = `
-        INSERT INTO month_notes (month_key, notes, updated_at)
-        VALUES ($1, $2, CURRENT_TIMESTAMP)
-        ON CONFLICT (month_key) DO UPDATE
-        SET notes = EXCLUDED.notes, updated_at = CURRENT_TIMESTAMP
-        RETURNING *
-      `;
-      const result = await pool.query(queryText, [month, notes || '']);
-      return res.status(200).json(result.rows[0]);
+      const { data, error } = await supabase
+        .from('month_notes')
+        .upsert(
+          { month_key: month, notes: notes || '', updated_at: new Date().toISOString() },
+          { onConflict: 'month_key' }
+        )
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.status(200).json(data);
     } catch (err) {
       console.error('Error saving month notes:', err);
       return res.status(500).json({ error: err.message });

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useContent } from './hooks/useContent';
 import { useSearch } from './hooks/useSearch';
 import TopNav from './components/TopNav/TopNav';
@@ -7,17 +7,18 @@ import GridView from './views/GridView';
 import CalendarView from './views/CalendarView';
 import EmptyState from './components/EmptyState/EmptyState';
 import LoadingSkeleton from './components/LoadingSkeleton/LoadingSkeleton';
-import PreviewModal from './components/PreviewModal/PreviewModal';
 import PinModal from './components/PinModal/PinModal';
-import RevisionModal from './components/RevisionModal/RevisionModal';
 import Footer from './components/Footer/Footer';
 import ContentEditor from './components/ContentEditor/ContentEditor';
-import AiModal from './components/AiModal/AiModal';
 import MonthNotes from './components/MonthNotes/MonthNotes';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { getMonthName } from './utils/helpers';
 import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
+
+const PreviewModal = lazy(() => import('./components/PreviewModal/PreviewModal'));
+const RevisionModal = lazy(() => import('./components/RevisionModal/RevisionModal'));
+const AiModal = lazy(() => import('./components/AiModal/AiModal'));
 
 function MainApp() {
   const { isAdmin, isPinModalOpen, closePinModal, openPinModal } = useAuth();
@@ -38,6 +39,7 @@ function MainApp() {
     batchAddContent,
     updateContentItem,
     removeContent,
+    refreshContent,
   } = useContent(year, month);
 
   // Filter content by current active category (Social vs Written)
@@ -349,32 +351,41 @@ function MainApp() {
           <div className="app-main__subheader-right">
             <button
               className="app-main__ai-btn"
-              onClick={() => {
-                if (isAdmin) {
-                  setIsAiModalOpen(true);
-                } else {
-                  openPinModal();
-                }
-              }}
+              onClick={() => setIsAiModalOpen(true)}
               type="button"
               title={`Generate ${activeCategory === 'written' ? 'editorial articles schedule' : 'social content schedule'} with AI`}
             >
-              Generate Table
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              <span>Generate Table</span>
             </button>
           </div>
         </div>
 
         {loading ? (
           <LoadingSkeleton view={view} />
-        ) : error ? (
+        ) : (error && categoryContent.length === 0) ? (
           <div className="app-error">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-            <h2>Something went wrong</h2>
+            <h2>Unable to connect to database</h2>
             <p>{error}</p>
+            <button
+              className="app-main__ai-btn"
+              onClick={() => refreshContent()}
+              style={{ marginTop: '14px', background: 'var(--color-primary)' }}
+              type="button"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+              <span>Retry Connection</span>
+            </button>
           </div>
         ) : filteredContent.length === 0 && !searchQuery ? (
           <EmptyState onCreateFirst={handleCreateNew} />
@@ -439,20 +450,22 @@ function MainApp() {
 
       {/* Multi-Image Carousel & PDF Lightbox Preview Modal */}
       {(previewAsset || previewAssets.length > 0 || previewText) && (
-        <PreviewModal
-          asset={previewAsset}
-          assets={previewAssets}
-          initialIndex={previewInitialIndex}
-          richText={previewText}
-          caption={previewCaption}
-          onClose={() => {
-            setPreviewAsset(null);
-            setPreviewAssets([]);
-            setPreviewInitialIndex(0);
-            setPreviewText(null);
-            setPreviewCaption(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <PreviewModal
+            asset={previewAsset}
+            assets={previewAssets}
+            initialIndex={previewInitialIndex}
+            richText={previewText}
+            caption={previewCaption}
+            onClose={() => {
+              setPreviewAsset(null);
+              setPreviewAssets([]);
+              setPreviewInitialIndex(0);
+              setPreviewText(null);
+              setPreviewCaption(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {/* PIN Unlock Modal */}
@@ -460,24 +473,28 @@ function MainApp() {
 
       {/* Revision Feedback Modal */}
       {revisionItem && (
-        <RevisionModal
-          contentItem={revisionItem}
-          onSaveFeedback={handleSaveFeedback}
-          onResubmitForReview={handleResubmitForReview}
-          onPreviewAsset={handleOpenPreview}
-          onClose={() => setRevisionItem(null)}
-        />
+        <Suspense fallback={null}>
+          <RevisionModal
+            contentItem={revisionItem}
+            onSaveFeedback={handleSaveFeedback}
+            onResubmitForReview={handleResubmitForReview}
+            onPreviewAsset={handleOpenPreview}
+            onClose={() => setRevisionItem(null)}
+          />
+        </Suspense>
       )}
 
       {/* AI Generator Modal */}
       {isAiModalOpen && (
-        <AiModal
-          year={year}
-          month={month}
-          category={activeCategory}
-          onGenerate={batchAddContent}
-          onClose={() => setIsAiModalOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <AiModal
+            year={year}
+            month={month}
+            category={activeCategory}
+            onGenerate={batchAddContent}
+            onClose={() => setIsAiModalOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

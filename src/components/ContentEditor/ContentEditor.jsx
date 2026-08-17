@@ -165,33 +165,8 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
           </>
         );
 
-      case 'reel':
-        return (
-          <>
-            <div className="editor__field">
-              <label className="editor__label">Caption</label>
-              <textarea
-                className="editor__textarea"
-                value={formData.caption || ''}
-                onChange={(e) => handleChange('caption', e.target.value)}
-                placeholder="Write your caption..."
-                rows={4}
-              />
-            </div>
-            <UploadZone
-              label="Upload Reel Video"
-              assets={formData.assets || []}
-              onUpload={handleUpload}
-              onRemove={handleRemoveAsset}
-              onPreview={(asset, idx) => onPreview({ asset, assets: formData.assets || [asset], initialIndex: idx ?? 0, caption: formData.caption })}
-              accept="video/*"
-            />
-          </>
-        );
-
       case 'blog':
       case 'newsletter':
-      case 'case-study':
         return (
           <>
             <div className="editor__field">
@@ -330,14 +305,22 @@ export default function ContentEditor({ item, onUpdate, onDelete, onPreview, onC
             </div>
           )}
 
-          {isAdmin && (
-            <button className="editor__delete-btn" onClick={() => onDelete(item.id)} title="Delete Content" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3,6 5,6 21,6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </button>
-          )}
+          <button
+            className="editor__delete-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onDelete(item.id);
+              onClose?.();
+            }}
+            title="Delete Content Piece"
+            type="button"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
           {onClose && (
             <button className="editor__close-btn" onClick={onClose} title="Close / Collapse" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

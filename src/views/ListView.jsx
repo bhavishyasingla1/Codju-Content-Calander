@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import ContentRow from '../components/ContentRow/ContentRow';
 import { useAuth } from '../context/AuthContext';
 import { safeJsonParse } from '../utils/helpers';
@@ -18,34 +18,44 @@ export default function ListView({
   const { isAdmin, openPinModal } = useAuth();
   const [expandedId, setExpandedId] = useState(null);
   const [draggedIndex, setDraggedIndex] = useState(null);
-  const [localContent, setLocalContent] = useState([]);
+  const [customOrder, setCustomOrder] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const dragNode = useRef(null);
+  const tableBottomRef = useRef(null);
+  const prevContentLengthRef = useRef(content.length);
 
-  // Sync state and apply custom sort order from localStorage
-  useEffect(() => {
-    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-    const storedOrder = localStorage.getItem(`codju_order_${monthKey}`);
-    
-    let sortedContent = [...content];
-    if (storedOrder) {
-      const idArray = safeJsonParse(storedOrder, []);
-      if (Array.isArray(idArray) && idArray.length > 0) {
-        sortedContent.sort((a, b) => {
-          const idxA = idArray.indexOf(a.id);
-          const idxB = idArray.indexOf(b.id);
-          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-          if (idxA !== -1) return -1;
-          if (idxB !== -1) return 1;
-          return 0;
-        });
-      }
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+  // Instant 0ms synchronous sorting without useEffect re-render lag
+  const displayedContent = useMemo(() => {
+    let items = [...content];
+    const order = customOrder || safeJsonParse(localStorage.getItem(`codju_order_${monthKey}`), null);
+    if (order && Array.isArray(order) && order.length > 0) {
+      items.sort((a, b) => {
+        const idxA = order.indexOf(a.id);
+        const idxB = order.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return new Date(a.date) - new Date(b.date);
+      });
     }
-    setLocalContent(sortedContent);
-  }, [content, year, month]);
+    return items;
+  }, [content, customOrder, monthKey]);
 
-  // Reset selections when changing view/month
+  // Auto scroll smoothly to bottom when a new row is added
   useEffect(() => {
+    if (content.length > prevContentLengthRef.current) {
+      setTimeout(() => {
+        tableBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+    prevContentLengthRef.current = content.length;
+  }, [content.length]);
+
+  // Reset custom order and selections when switching month/year
+  useEffect(() => {
+    setCustomOrder(null);
     setSelectedIds([]);
   }, [year, month]);
 
@@ -60,17 +70,17 @@ export default function ListView({
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === localContent.length) {
+    if (selectedIds.length === displayedContent.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(localContent.map(item => item.id));
+      setSelectedIds(displayedContent.map(item => item.id));
     }
   };
 
   const handleBulkDelete = async () => {
     try {
       for (const id of selectedIds) {
-        await onDelete(id, true); // Silent delete to bypass multiple confirm alerts
+        await onDelete(id, true);
       }
       setSelectedIds([]);
     } catch (e) {
@@ -89,21 +99,18 @@ export default function ListView({
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
 
-    // Swap elements in state immediately for visual feedback
-    const updated = [...localContent];
+    const updated = [...displayedContent];
     const draggedItem = updated[draggedIndex];
     updated.splice(draggedIndex, 1);
     updated.splice(index, 0, draggedItem);
 
     setDraggedIndex(index);
-    setLocalContent(updated);
+    setCustomOrder(updated.map(i => i.id));
   };
 
   const handleDragEnd = () => {
-    if (draggedIndex !== null) {
-      const idOrder = localContent.map(item => item.id);
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-      localStorage.setItem(`codju_order_${monthKey}`, JSON.stringify(idOrder));
+    if (customOrder) {
+      localStorage.setItem(`codju_order_${monthKey}`, JSON.stringify(customOrder));
     }
     setDraggedIndex(null);
     dragNode.current = null;
@@ -134,7 +141,7 @@ export default function ListView({
     }
   };
 
-  const isAllSelected = localContent.length > 0 && selectedIds.length === localContent.length;
+  const isAllSelected = displayedContent.length > 0 && selectedIds.length === displayedContent.length;
 
   return (
     <div className="list-view-container animate-fade-in" onKeyDown={handleKeyDown}>
@@ -162,7 +169,7 @@ export default function ListView({
             </tr>
           </thead>
           <tbody>
-            {localContent.map((item, idx) => (
+            {displayedContent.map((item, idx) => (
               <ContentRow
                 key={item.id}
                 item={item}
@@ -184,6 +191,7 @@ export default function ListView({
             ))}
           </tbody>
         </table>
+        <div ref={tableBottomRef} />
       </div>
 
       <div className="list-view__footer-actions">

@@ -19,13 +19,13 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === ROLES.DESIGNER || saved === ROLES.ADMIN) {
+      if (saved === ROLES.DESIGNER || saved === ROLES.ADMIN || saved === ROLES.VIEWER) {
         return saved;
       }
     } catch {
       // ignore storage errors
     }
-    return ROLES.VIEWER;
+    return ROLES.ADMIN; // Default to Admin for full editing, adding, and deleting control
   });
 
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);

@@ -100,7 +100,7 @@ export default function PinModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="pin-modal__backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="pin-modal__backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="pin-modal animate-scale-in">
         <div className="pin-modal__header">
           <div className="pin-modal__header-icon">

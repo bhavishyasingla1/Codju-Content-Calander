@@ -1,8 +1,9 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react';
 import { isImageFile, isVideoFile, isPdfFile, stripHtml, dataUrlToBlob, sanitizeHtml } from '../../utils/helpers';
 import { downloadAsset } from '../../services/contentService';
-import PdfViewer from '../PdfViewer/PdfViewer';
 import './PreviewModal.css';
+
+const PdfViewer = lazy(() => import('../PdfViewer/PdfViewer'));
 
 export default function PreviewModal({
   asset,
@@ -168,16 +169,23 @@ export default function PreviewModal({
       );
     }
 
-    // Interactive PDF viewer
+    // Interactive PDF viewer (asynchronously loaded on demand)
     if (isPdfFile(currentAsset)) {
       return (
         <div className="preview-modal__pdf-wrap">
-          <PdfViewer
-            url={currentAsset.url}
-            fileName={currentAsset.name || 'document.pdf'}
-            onDownload={handleDownload}
-            onOpenNewTab={handleOpenNewTab}
-          />
+          <Suspense fallback={
+            <div className="pdf-viewer__loading">
+              <div className="pdf-viewer__spinner" />
+              <p className="pdf-viewer__loading-text">Loading PDF viewer engine...</p>
+            </div>
+          }>
+            <PdfViewer
+              url={currentAsset.url}
+              fileName={currentAsset.name || 'document.pdf'}
+              onDownload={handleDownload}
+              onOpenNewTab={handleOpenNewTab}
+            />
+          </Suspense>
         </div>
       );
     }
@@ -205,19 +213,16 @@ export default function PreviewModal({
             <span className="preview-modal__name">
               {richText
                 ? 'Text Preview'
-                : totalAssets > 1
-                ? `${currentAsset?.name || 'Image'} (${currentIndex + 1} of ${totalAssets})`
                 : (currentAsset?.name || 'Preview')}
             </span>
-          </div>
-
-          <div className="preview-modal__actions">
-            {/* Slide counter indicator */}
             {totalAssets > 1 && (
               <span className="preview-modal__counter-badge">
                 {currentIndex + 1} / {totalAssets}
               </span>
             )}
+          </div>
+
+          <div className="preview-modal__actions">
 
             {/* Copy Text Button */}
             {hasCopyableText && (

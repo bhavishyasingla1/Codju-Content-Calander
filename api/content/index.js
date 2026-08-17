@@ -1,4 +1,4 @@
-import { pool, mapToFrontend } from '../db.js';
+import { supabase, mapToFrontend, mapToDb } from '../db.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -13,18 +13,16 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const monthQuery = req.query.month; // e.g. 2026-07
     try {
-      let queryText = 'SELECT * FROM content';
-      let params = [];
-
+      let q = supabase.from('content').select('*');
       if (monthQuery) {
-        queryText += ' WHERE date LIKE $1';
-        params.push(`${monthQuery}%`);
+        q = q.like('date', `${monthQuery}%`);
       }
+      q = q.order('date', { ascending: true });
 
-      queryText += ' ORDER BY date ASC';
+      const { data, error } = await q;
+      if (error) throw error;
 
-      const result = await pool.query(queryText, params);
-      const content = result.rows.map(mapToFrontend);
+      const content = (data || []).map(mapToFrontend);
       return res.status(200).json(content);
     } catch (err) {
       console.error('Error fetching content:', err);
@@ -37,36 +35,31 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const now = new Date().toISOString();
 
-      const queryText = `
-        INSERT INTO content (id, date, name, type, category, summary, caption, platform, status, assets, rich_text, script, thumbnail_asset, pdf_asset, feedback, feedback_assets, reviewed_at, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-        RETURNING *
-      `;
+      const itemToInsert = {
+        id: body.id || ('c' + Math.random().toString(36).substr(2, 9)),
+        date: body.date || now.split('T')[0],
+        name: body.name || 'Untitled Content',
+        type: body.type || (body.category === 'written' ? 'blog' : 'static'),
+        category: body.category || 'social',
+        summary: body.summary || '',
+        caption: body.caption || '',
+        platform: body.platform || (body.category === 'written' ? 'website' : 'instagram'),
+        status: body.status || 'draft',
+        assets: body.assets || [],
+        richText: body.richText || '',
+        script: body.script || '',
+        thumbnailAsset: body.thumbnailAsset || null,
+        pdfAsset: body.pdfAsset || null,
+        feedback: body.feedback || '',
+        feedbackAssets: body.feedbackAssets || [],
+        reviewedAt: body.reviewedAt || null
+      };
 
-      const params = [
-        body.id || ('c' + Math.random().toString(36).substr(2, 9)),
-        body.date || now.split('T')[0],
-        body.name || 'Untitled Content',
-        body.type || (body.category === 'written' ? 'blog' : 'static'),
-        body.category || 'social',
-        body.summary || '',
-        body.caption || '',
-        body.platform || (body.category === 'written' ? 'website' : 'instagram'),
-        body.status || 'draft',
-        JSON.stringify(body.assets || []),
-        body.richText || '',
-        body.script || '',
-        JSON.stringify(body.thumbnailAsset || null),
-        JSON.stringify(body.pdfAsset || null),
-        body.feedback || '',
-        JSON.stringify(body.feedbackAssets || []),
-        body.reviewedAt || null,
-        now,
-        now
-      ];
+      const dbRow = mapToDb(itemToInsert);
+      const { data, error } = await supabase.from('content').insert(dbRow).select().single();
+      if (error) throw error;
 
-      const result = await pool.query(queryText, params);
-      return res.status(201).json(mapToFrontend(result.rows[0]));
+      return res.status(201).json(mapToFrontend(data));
     } catch (err) {
       console.error('Error creating content:', err);
       return res.status(500).json({ error: err.message });

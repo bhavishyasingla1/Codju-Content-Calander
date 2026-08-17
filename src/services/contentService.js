@@ -9,6 +9,54 @@ function generateId() {
   return 'c' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
+// Cross-tab broadcast channel for instantaneous zero-latency updates
+const syncChannel = typeof window !== 'undefined' && window.BroadcastChannel
+  ? new BroadcastChannel('codju_live_sync')
+  : null;
+
+export function broadcastLiveEvent(type, payload) {
+  if (syncChannel) {
+    try {
+      syncChannel.postMessage({ type, payload, timestamp: Date.now() });
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+  }
+}
+
+export function subscribeLiveEvents(callback) {
+  if (!syncChannel) return () => {};
+  const handler = (event) => {
+    if (event.data) {
+      callback(event.data);
+    }
+  };
+  syncChannel.addEventListener('message', handler);
+  return () => syncChannel.removeEventListener('message', handler);
+}
+
+/**
+ * Fetch delta sync for a specific month
+ * @param {number} year
+ * @param {number} month
+ * @param {string|null} since
+ * @param {number|null} count
+ * @returns {Promise<{ changed: boolean, latest: string, count: number, items?: Array }>}
+ */
+export async function fetchContentSync(year, month, since = null, count = null) {
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+  let url = `/api/content/sync?month=${monthKey}`;
+  if (since) url += `&since=${encodeURIComponent(since)}`;
+  if (count !== null && count !== undefined) url += `&count=${count}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to sync content');
+  }
+  return response.json();
+}
+
 /**
  * Fetch all content for a specific month
  * @param {number} year
@@ -30,7 +78,6 @@ export async function fetchContentByMonth(year, month) {
  * @returns {Promise<string[]>}
  */
 export async function fetchAvailableMonths() {
-  // Return standard active months list, or we could query from API
   return ['2026-06', '2026-07', '2026-08'];
 }
 
@@ -40,15 +87,16 @@ export async function fetchAvailableMonths() {
  * @returns {Promise<object>}
  */
 export async function createContent(contentData) {
+  const payload = {
+    id: generateId(),
+    ...contentData,
+  };
   const response = await fetch('/api/content', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      id: generateId(),
-      ...contentData,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -56,7 +104,9 @@ export async function createContent(contentData) {
     throw new Error(errorData.error || 'Failed to create content');
   }
 
-  return response.json();
+  const created = await response.json();
+  broadcastLiveEvent('CONTENT_CREATED', created);
+  return created;
 }
 
 /**
@@ -79,7 +129,9 @@ export async function updateContent(id, updates) {
     throw new Error(errorData.error || 'Failed to update content');
   }
 
-  return response.json();
+  const updated = await response.json();
+  broadcastLiveEvent('CONTENT_UPDATED', updated);
+  return updated;
 }
 
 /**
@@ -98,6 +150,7 @@ export async function deleteContent(id) {
   }
 
   const result = await response.json();
+  broadcastLiveEvent('CONTENT_DELETED', { id });
   return result.success;
 }
 
@@ -108,7 +161,6 @@ export async function deleteContent(id) {
  * @returns {Promise<boolean>}
  */
 export async function createMonth(_year, _month) {
-  // Just return true because the database queries dynamically.
   return true;
 }
 
@@ -122,7 +174,74 @@ function fileToDataURL(file) {
 }
 
 /**
- * Upload an asset (converts to base64 Data URL for persistent storage)
+ * Compresses an image file client-side to prevent bloated Base64 data URLs
+ * @param {File} file
+ * @param {number} maxDim
+ * @param {number} quality
+ * @returns {Promise<{ dataUrl: string, size: number, type: string }>}
+ */
+async function compressImage(file, maxDim = 1600, quality = 0.85) {
+  return new Promise((resolve) => {
+    // If SVG or GIF, don't compress in canvas to keep animation/vector quality
+    if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ dataUrl: reader.result, size: file.size, type: file.type });
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Prefer webp for smaller footprint with great visual quality
+      let outputType = 'image/webp';
+      let dataUrl = canvas.toDataURL(outputType, quality);
+
+      // If browser doesn't support webp encoding (rare), fallback to jpeg
+      if (!dataUrl.startsWith('data:image/webp')) {
+        outputType = 'image/jpeg';
+        dataUrl = canvas.toDataURL(outputType, quality);
+      }
+
+      // Calculate approximate byte size from base64
+      const base64Length = dataUrl.length - (dataUrl.indexOf(',') + 1);
+      const approxSize = Math.round((base64Length * 3) / 4);
+
+      resolve({ dataUrl, size: approxSize, type: outputType });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
+ * Upload an asset (with automatic client-side compression for images)
  * @param {File} file
  * @returns {Promise<object>}
  */
@@ -134,8 +253,10 @@ export async function uploadAsset(file) {
     throw new Error('File size exceeds the 50MB limit. Please upload a smaller file.');
   }
   try {
-    const dataUrl = await fileToDataURL(file);
+    let finalDataUrl = null;
+    let finalSize = file.size;
     let resolvedType = file.type;
+
     if (!resolvedType) {
       if (file.name.toLowerCase().endsWith('.pdf')) {
         resolvedType = 'application/pdf';
@@ -149,16 +270,35 @@ export async function uploadAsset(file) {
         resolvedType = 'application/octet-stream';
       }
     }
+
+    // Apply smart image compression for photos and artwork to keep data fast & light
+    if (resolvedType.startsWith('image/') && resolvedType !== 'image/svg+xml' && resolvedType !== 'image/gif') {
+      try {
+        const compressed = await compressImage(file, 1600, 0.85);
+        if (compressed && compressed.dataUrl) {
+          finalDataUrl = compressed.dataUrl;
+          finalSize = compressed.size;
+          resolvedType = compressed.type;
+        }
+      } catch (e) {
+        console.warn('Image compression fallback:', e);
+      }
+    }
+
+    if (!finalDataUrl) {
+      finalDataUrl = await fileToDataURL(file);
+    }
+
     return {
       id: 'a' + Math.random().toString(36).substr(2, 9),
       name: file.name,
       type: resolvedType,
-      size: file.size,
-      url: dataUrl,
+      size: finalSize,
+      url: finalDataUrl,
       uploadedAt: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('Failed to convert file to data URL', error);
+    console.error('Failed to process asset upload', error);
     throw error;
   }
 }

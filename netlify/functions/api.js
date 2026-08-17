@@ -1,10 +1,11 @@
 import generateAiHandler from '../../api/generate-ai.js';
 import notesHandler from '../../api/notes.js';
 import contentBatchHandler from '../../api/content/batch.js';
+import contentSyncHandler from '../../api/content/sync.js';
 import contentIdHandler from '../../api/content/[id].js';
 import contentIndexHandler from '../../api/content/index.js';
 
-export default async (request, context) => {
+export default async (request, _context) => {
   const url = new URL(request.url);
   // Clean trailing slashes
   const pathname = url.pathname.replace(/\/$/, '');
@@ -79,6 +80,8 @@ export default async (request, context) => {
       await generateAiHandler(req, res);
     } else if (pathname === '/api/notes') {
       await notesHandler(req, res);
+    } else if (pathname === '/api/content/sync') {
+      await contentSyncHandler(req, res);
     } else if (pathname === '/api/content/batch') {
       await contentBatchHandler(req, res);
     } else if (pathname.startsWith('/api/content/')) {
